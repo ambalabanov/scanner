@@ -3,51 +3,55 @@ package main
 import (
 	"context"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"log"
 	"net"
 	"sync"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 const (
-	URI        = "mongodb://localhost:27017"
-	Db         = "scannerDb"
-	Collection = "endpoints"
+	uri  = "mongodb://localhost:27017"
+	db   = "scannerDb"
+	coll = "endpoints"
 )
 
 var (
 	wg sync.WaitGroup
 )
 
-type Endpoint struct {
+type endpoint struct {
 	Host string
 	Port int
 }
 
 func main() {
-	client, err := dbConnect()
+	collection, err := dbConnect()
 	if err != nil {
 		log.Fatalln("Db not connected!")
 	}
 	ports := []int{22, 80, 443, 8080}
-	host := "scanme.nmap.org"
-	for _, p := range ports {
-		go scan(client, host, p)
+	hosts := []string{"scanme.nmap.org", "getinside.cloud"}
+	for _, h := range hosts {
+		collection.DeleteMany(context.TODO(), bson.M{"host": h})
+		for _, p := range ports {
+			go scan(collection, h, p)
+		}
 	}
 	wg.Wait()
-	filter := bson.M{"host": host}
-	results := dbFind(client, filter)
+	filter := bson.M{}
+	results := dbFind(collection, filter)
 	for i := range results {
 		fmt.Println(results[i].Host, results[i].Port)
 	}
 
 }
 
-func scan(client *mongo.Client, host string, port int) {
+func scan(collection *mongo.Collection, host string, port int) {
 	wg.Add(1)
 	defer wg.Done()
 	address := fmt.Sprintf("%s:%d", host, port)
@@ -56,28 +60,27 @@ func scan(client *mongo.Client, host string, port int) {
 		return
 	}
 	conn.Close()
-	result := Endpoint{host, port}
-	dbInsert(client, result)
+	result := endpoint{host, port}
+	dbInsert(collection, result)
 }
 
-func dbInsert(client *mongo.Client, ep Endpoint) {
-	collection := client.Database(Db).Collection(Collection)
+func dbInsert(collection *mongo.Collection, ep endpoint) {
+
 	insertResult, err := collection.InsertOne(context.TODO(), ep)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("dbInsert: ", insertResult.InsertedID, ep)
+	log.Println("dbInsert: ", insertResult.InsertedID, ep)
 }
 
-func dbFind(client *mongo.Client, filter bson.M) []*Endpoint {
-	var results []*Endpoint
-	collection := client.Database(Db).Collection(Collection)
+func dbFind(collection *mongo.Collection, filter bson.M) []*endpoint {
+	var results []*endpoint
 	cur, err := collection.Find(context.TODO(), filter)
 	if err != nil {
 		log.Fatal("Error on Finding all the documents", err)
 	}
 	for cur.Next(context.TODO()) {
-		var result Endpoint
+		var result endpoint
 		err = cur.Decode(&result)
 		if err != nil {
 			log.Fatal("Error on Decoding the document", err)
@@ -87,12 +90,13 @@ func dbFind(client *mongo.Client, filter bson.M) []*Endpoint {
 	return results
 }
 
-func dbConnect() (*mongo.Client, error) {
+func dbConnect() (*mongo.Collection, error) {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(URI))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	err = client.Ping(ctx, readpref.Primary())
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+	collection := client.Database(db).Collection(coll)
+	return collection, nil
 }
