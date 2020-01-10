@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"sync"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -91,10 +90,8 @@ func dbFind(collection *mongo.Collection, filter bson.M) []*endpoint {
 }
 
 func dbConnect() (*mongo.Collection, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
-	err = client.Ping(ctx, readpref.Primary())
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
+	err = client.Ping(context.TODO(), readpref.Primary())
 	if err != nil {
 		return nil, err
 	}
