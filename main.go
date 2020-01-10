@@ -25,14 +25,8 @@ var (
 	wg sync.WaitGroup
 )
 
-type endpoint struct {
-	Host string
-	Port int
-}
-
 func main() {
-
-	ports := []int{22, 80, 443, 8080}
+	ports := []int{80, 443, 3000, 5000, 8008, 8080, 8081}
 	hosts := []string{"scanme.nmap.org", "getinside.cloud"}
 	log.Println("Prepare db...")
 	for _, h := range hosts {
@@ -100,7 +94,7 @@ func dbDelete(filter bson.M) {
 func dbFind(filter bson.M) {
 	collection, err := dbConnect()
 	if err != nil {
-		log.Fatalln("Db not connected!")
+		log.Fatalln("db not connected!")
 	}
 
 	cur, err := collection.Find(context.TODO(), filter)
