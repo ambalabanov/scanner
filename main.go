@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -15,24 +17,35 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-const (
-	uri  = "mongodb://localhost:27017"
-	db   = "scannerDb"
-	coll = "endpoints"
+var (
+	wg     sync.WaitGroup
+	config configuration
 )
 
-var (
-	wg sync.WaitGroup
-)
+type database struct {
+	URI  string `json:"uri"`
+	DB   string `json:"db"`
+	Coll string `json:"coll"`
+}
+type endpoints struct {
+	Host  string `json:"host"`
+	Ports []int  `json:"ports"`
+}
+type configuration struct {
+	DB        database    `json:"database"`
+	Endpoints []endpoints `json:"endpoints"`
+}
+
+func init() {
+	config, _ = loadConfig("config.json")
+}
 
 func main() {
-	ports := []int{22, 80, 443, 3000, 5000, 8008, 8080, 8081}
-	hosts := []string{"scanme.nmap.org", "getinside.cloud"}
 	log.Println("Prepare db...")
 	dbDelete(bson.M{})
-	for _, h := range hosts {
-		for _, p := range ports {
-			go checkTCP(h, p)
+	for _, h := range config.Endpoints {
+		for _, p := range h.Ports {
+			go checkTCP(string(h.Host), int(p))
 		}
 	}
 	log.Printf("Start scan: active gorutines %v\n", runtime.NumGoroutine())
@@ -40,6 +53,19 @@ func main() {
 	log.Println("Retrive data from db...")
 	dbFind(bson.M{})
 	log.Println("Done!")
+}
+
+func loadConfig(filename string) (configuration, error) {
+	bytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return configuration{}, err
+	}
+	var c configuration
+	err = json.Unmarshal(bytes, &c)
+	if err != nil {
+		return configuration{}, err
+	}
+	return c, nil
 }
 
 func checkTCP(host string, port int) {
@@ -52,8 +78,8 @@ func checkTCP(host string, port int) {
 		dbInsert(bson.M{"host": host, "port": port})
 		go checkHTTP(host, port)
 	}
-
 }
+
 func checkHTTP(host string, port int) {
 	wg.Add(1)
 	defer wg.Done()
@@ -65,7 +91,6 @@ func checkHTTP(host string, port int) {
 	if r.StatusCode != http.StatusNotFound {
 		dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "header": r.Header})
 	}
-
 }
 
 func dbInsert(data bson.M) {
@@ -88,12 +113,12 @@ func dbDelete(filter bson.M) {
 		log.Fatal(err)
 	}
 }
+
 func dbFind(filter bson.M) {
 	collection, err := dbConnect()
 	if err != nil {
 		log.Fatalln("db not connected!")
 	}
-
 	cur, err := collection.Find(context.TODO(), filter)
 	if err != nil {
 		log.Fatal("Error on Finding all the documents", err)
@@ -106,15 +131,14 @@ func dbFind(filter bson.M) {
 		}
 		fmt.Println(result)
 	}
-
 }
 
 func dbConnect() (*mongo.Collection, error) {
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(config.DB.URI))
 	err = client.Ping(context.TODO(), readpref.Primary())
 	if err != nil {
 		return nil, err
 	}
-	collection := client.Database(db).Collection(coll)
+	collection := client.Database(config.DB.DB).Collection(config.DB.Coll)
 	return collection, nil
 }
