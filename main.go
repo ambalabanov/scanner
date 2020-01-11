@@ -26,17 +26,16 @@ var (
 )
 
 func main() {
-	ports := []int{80, 443, 3000, 5000, 8008, 8080, 8081}
+	ports := []int{22, 80, 443, 3000, 5000, 8008, 8080, 8081}
 	hosts := []string{"scanme.nmap.org", "getinside.cloud"}
 	log.Println("Prepare db...")
+	dbDelete(bson.M{})
 	for _, h := range hosts {
-		dbDelete(bson.M{"host": h})
 		for _, p := range ports {
 			go checkTCP(h, p)
 		}
 	}
-	log.Println("Start scan...")
-	log.Println("active gorutines", runtime.NumGoroutine())
+	log.Printf("Start scan: active gorutines %v\n", runtime.NumGoroutine())
 	wg.Wait()
 	log.Println("Retrive data from db...")
 	dbFind(bson.M{})
@@ -59,12 +58,12 @@ func checkHTTP(host string, port int) {
 	wg.Add(1)
 	defer wg.Done()
 	url := fmt.Sprintf("http://%s:%d", host, port)
-	response, err := http.Head(url)
+	r, err := http.Head(url)
 	if err != nil {
 		return
 	}
-	if response.StatusCode == http.StatusOK {
-		dbInsert(bson.M{"host": host, "url": url})
+	if r.StatusCode != http.StatusNotFound {
+		dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "header": r.Header})
 	}
 
 }
@@ -74,22 +73,20 @@ func dbInsert(data bson.M) {
 	if err != nil {
 		log.Fatalln("Db not connected!")
 	}
-	insertResult, err := collection.InsertOne(context.TODO(), data)
+	collection.InsertOne(context.TODO(), data)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("dbInsert: ", insertResult.InsertedID, data)
 }
 func dbDelete(filter bson.M) {
 	collection, err := dbConnect()
 	if err != nil {
 		log.Fatalln("Db not connected!")
 	}
-	deleteResult, err := collection.DeleteMany(context.TODO(), filter)
+	collection.DeleteMany(context.TODO(), filter)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("dbDelete ", deleteResult.DeletedCount, filter)
 }
 func dbFind(filter bson.M) {
 	collection, err := dbConnect()
