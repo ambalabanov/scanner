@@ -3,5 +3,6 @@
         "uri"  : "mongodb://localhost:27017",
         "db"   : "scannerDb",
         "coll" : "endpoints"
-    }
+    },
+    "nmap": "nmap --open -p- -i nmap_input.txt -oX nmap_output.xml"
 }

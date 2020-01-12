@@ -8,11 +8,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
 	"runtime"
 	"sync"
 	"time"
 
-	"github.com/lair-framework/go-nmap"
+	"github.com/ambalabanov/go-nmap"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -31,9 +33,10 @@ type configuration struct {
 		Db   string `json:"db"`
 		Coll string `json:"coll"`
 	} `json:"database"`
+	NmapParams string `json:"nmap"`
 }
 
-func init() {
+func main() {
 	var err error
 	fmt.Print("Load config.json...")
 	config, err = loadJSON("config.json")
@@ -41,7 +44,16 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	//nmap --open -p- -i nmap_input -oX nmap_output.xml
+	if _, err := os.Stat("nmap_output.xml"); os.IsNotExist(err) {
+		log.Println("nmap_output.xml not found!")
+		if _, err := os.Stat("nmap_input.txt"); !os.IsNotExist(err) {
+			fmt.Print("Run nmap...")
+			exec.Command("bash", "-c", string(config.NmapParams)).Run()
+			fmt.Println("ОК!")
+		} else {
+			log.Fatal("nmap_input.txt not found!")
+		}
+	}
 	fmt.Print("Load nmap_output.xml...")
 	nmapXML, err = loadXML("nmap_output.xml")
 	if err != nil {
@@ -54,9 +66,6 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-}
-
-func main() {
 	log.Println("Start scan...")
 	for _, h := range nmapXML.Hosts {
 		for _, p := range h.Ports {
@@ -103,15 +112,13 @@ func checkHTTP(host string, port int) {
 	defer wg.Done()
 	url := fmt.Sprintf("http://%s:%d", host, port)
 	client := http.Client{
-		Timeout: 1 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 	r, err := client.Head(url)
 	if err != nil {
 		return
 	}
-	if r.StatusCode != http.StatusNotFound {
-		dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "header": r.Header})
-	}
+	dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "header": r.Header})
 }
 
 func dbInsert(data bson.M) {
