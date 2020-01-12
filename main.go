@@ -36,7 +36,7 @@ type configuration struct {
 	NmapParams string `json:"nmap"`
 }
 
-func main() {
+func init() {
 	var err error
 	fmt.Print("Load config.json...")
 	config, err = loadJSON("config.json")
@@ -66,6 +66,9 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
+}
+
+func main() {
 	log.Println("Start scan...")
 	for _, h := range nmapXML.Hosts {
 		for _, p := range h.Ports {
@@ -78,7 +81,6 @@ func main() {
 	log.Println("Scan complete!")
 	log.Println("Retrive data from db...")
 	dbFind(bson.M{})
-
 }
 
 func loadJSON(filename string) (configuration, error) {
@@ -118,10 +120,12 @@ func checkHTTP(host string, port int) {
 	if err != nil {
 		return
 	}
-	dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "header": r.Header})
+	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "header": r.Header})
 }
 
 func dbInsert(data bson.M) {
+	wg.Add(1)
+	defer wg.Done()
 	collection, err := dbConnect()
 	if err != nil {
 		log.Fatalln("Db not connected!")
@@ -131,6 +135,7 @@ func dbInsert(data bson.M) {
 		log.Fatal(err)
 	}
 }
+
 func dbDelete(filter bson.M) error {
 	collection, err := dbConnect()
 	if err != nil {
