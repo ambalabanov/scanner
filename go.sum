@@ -1,5 +1,7 @@
 github.com/DataDog/zstd v1.4.4 h1:+IawcoXhCBylN7ccwdwf8LOH2jKq7NavGpEPanrlTzE=
 github.com/DataDog/zstd v1.4.4/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
+github.com/ambalabanov/go-nmap v0.0.0-20191202052157-3507e0b03523 h1:B2gdyMmscORqemd31qwfsLUGSAGeDdvVCklVGPLro7k=
+github.com/ambalabanov/go-nmap v0.0.0-20191202052157-3507e0b03523/go.mod h1:RWUP+WqkwVPr8VZdiDgUuu1Zchkh8/3of3xfwlJ5PrM=
 github.com/go-stack/stack v1.8.0 h1:5SgMzNM5HxrEjV0ww2lTmX6E2Izsfxas4+YHWRs3Lsk=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/golang/snappy v0.0.1 h1:Qgr9rKW7uDUkrbSmQeiDsGa8SjGyCOGtuasMWwvp2P4=
