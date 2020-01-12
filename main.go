@@ -22,18 +22,16 @@ var (
 	config configuration
 )
 
-type database struct {
-	URI  string `json:"uri"`
-	DB   string `json:"db"`
-	Coll string `json:"coll"`
-}
-type endpoints struct {
-	Host  string `json:"host"`
-	Ports []int  `json:"ports"`
-}
 type configuration struct {
-	DB        database    `json:"database"`
-	Endpoints []endpoints `json:"endpoints"`
+	Db struct {
+		URI  string `json:"uri"`
+		Db   string `json:"db"`
+		Coll string `json:"coll"`
+	} `json:"database"`
+	Endpoints []struct {
+		Host  string `json:"host"`
+		Ports []int  `json:"ports"`
+	} `json:"endpoints"`
 }
 
 func init() {
@@ -134,11 +132,11 @@ func dbFind(filter bson.M) {
 }
 
 func dbConnect() (*mongo.Collection, error) {
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(config.DB.URI))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(config.Db.URI))
 	err = client.Ping(context.TODO(), readpref.Primary())
 	if err != nil {
 		return nil, err
 	}
-	collection := client.Database(config.DB.DB).Collection(config.DB.Coll)
+	collection := client.Database(config.Db.Db).Collection(config.Db.Coll)
 	return collection, nil
 }
