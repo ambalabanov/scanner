@@ -31,10 +31,6 @@ type configuration struct {
 		Db   string `json:"db"`
 		Coll string `json:"coll"`
 	} `json:"database"`
-	Endpoints []struct {
-		Host  string `json:"host"`
-		Ports []int  `json:"ports"`
-	} `json:"endpoints"`
 }
 
 func init() {
@@ -45,6 +41,7 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
+	//nmap --open -p- -i nmap_input -oX nmap_output.xml
 	fmt.Print("Load nmap_output.xml...")
 	nmapXML, err = loadXML("nmap_output.xml")
 	if err != nil {

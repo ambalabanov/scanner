@@ -3,9 +3,5 @@
         "uri"  : "mongodb://localhost:27017",
         "db"   : "scannerDb",
         "coll" : "endpoints"
-    },
-    "endpoints" : [
-        {"host":"scanme.nmap.org","ports":[22, 80, 443, 3000, 4443, 5000, 8008, 8080, 8081]},
-        {"host":"getinside.cloud","ports":[22, 80, 443, 3000, 4443, 5000, 8008, 8080, 8081]}
-    ]
+    }
 }
