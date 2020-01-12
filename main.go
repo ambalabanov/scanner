@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/lair-framework/go-nmap"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -18,8 +20,9 @@ import (
 )
 
 var (
-	wg     sync.WaitGroup
-	config configuration
+	wg      sync.WaitGroup
+	config  configuration
+	nmapXML nmap.NmapRun
 )
 
 type configuration struct {
@@ -35,25 +38,43 @@ type configuration struct {
 }
 
 func init() {
-	config, _ = loadConfig("config.json")
+	var err error
+	fmt.Print("Load config.json...")
+	config, err = loadJSON("config.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OK!")
+	fmt.Print("Load nmap_output.xml...")
+	nmapXML, err = loadXML("nmap_output.xml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OK!")
+	fmt.Print("Prepare database...")
+	err = dbDelete(bson.M{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OK!")
 }
 
 func main() {
-	log.Println("Prepare db...")
-	dbDelete(bson.M{})
-	for _, h := range config.Endpoints {
+	log.Println("Start scan")
+	for _, h := range nmapXML.Hosts {
 		for _, p := range h.Ports {
-			go checkTCP(string(h.Host), int(p))
+			fmt.Println(string(h.Hostnames[0].Name), int(p.PortId))
+			go checkTCP(string(h.Hostnames[0].Name), int(p.PortId))
 		}
 	}
-	log.Printf("Start scan: active gorutines %v\n", runtime.NumGoroutine())
+	log.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	wg.Wait()
 	log.Println("Retrive data from db...")
 	dbFind(bson.M{})
 	log.Println("Done!")
 }
 
-func loadConfig(filename string) (configuration, error) {
+func loadJSON(filename string) (configuration, error) {
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return configuration{}, err
@@ -64,6 +85,19 @@ func loadConfig(filename string) (configuration, error) {
 		return configuration{}, err
 	}
 	return c, nil
+}
+
+func loadXML(filename string) (nmap.NmapRun, error) {
+	bytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nmap.NmapRun{}, err
+	}
+	var x nmap.NmapRun
+	err = xml.Unmarshal(bytes, &x)
+	if err != nil {
+		return nmap.NmapRun{}, err
+	}
+	return x, nil
 }
 
 func checkTCP(host string, port int) {
@@ -101,15 +135,16 @@ func dbInsert(data bson.M) {
 		log.Fatal(err)
 	}
 }
-func dbDelete(filter bson.M) {
+func dbDelete(filter bson.M) error {
 	collection, err := dbConnect()
 	if err != nil {
-		log.Fatalln("Db not connected!")
+		return err
 	}
 	collection.DeleteMany(context.TODO(), filter)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }
 
 func dbFind(filter bson.M) {
