@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/lair-framework/go-nmap"
 	"go.mongodb.org/mongo-driver/bson"
@@ -60,18 +60,19 @@ func init() {
 }
 
 func main() {
-	log.Println("Start scan")
+	log.Println("Start scan...")
 	for _, h := range nmapXML.Hosts {
 		for _, p := range h.Ports {
 			fmt.Println(string(h.Hostnames[0].Name), int(p.PortId))
-			go checkTCP(string(h.Hostnames[0].Name), int(p.PortId))
+			go checkHTTP(string(h.Hostnames[0].Name), int(p.PortId))
 		}
 	}
 	log.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	wg.Wait()
+	log.Println("Scan complete!")
 	log.Println("Retrive data from db...")
 	dbFind(bson.M{})
-	log.Println("Done!")
+
 }
 
 func loadJSON(filename string) (configuration, error) {
@@ -100,23 +101,14 @@ func loadXML(filename string) (nmap.NmapRun, error) {
 	return x, nil
 }
 
-func checkTCP(host string, port int) {
-	wg.Add(1)
-	defer wg.Done()
-	address := fmt.Sprintf("%s:%d", host, port)
-	conn, err := net.Dial("tcp", address)
-	if err == nil {
-		conn.Close()
-		dbInsert(bson.M{"host": host, "port": port})
-		go checkHTTP(host, port)
-	}
-}
-
 func checkHTTP(host string, port int) {
 	wg.Add(1)
 	defer wg.Done()
 	url := fmt.Sprintf("http://%s:%d", host, port)
-	r, err := http.Head(url)
+	client := http.Client{
+		Timeout: 1 * time.Second,
+	}
+	r, err := client.Head(url)
 	if err != nil {
 		return
 	}
