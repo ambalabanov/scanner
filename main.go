@@ -22,9 +22,10 @@ import (
 )
 
 var (
-	wg      sync.WaitGroup
-	config  configuration
-	nmapXML nmap.NmapRun
+	wg         sync.WaitGroup
+	config     configuration
+	nmapXML    nmap.NmapRun
+	collection *mongo.Collection
 )
 
 type configuration struct {
@@ -60,8 +61,14 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Print("Prepare database...")
-	err = dbDelete(bson.M{})
+	fmt.Print("Connect to database...")
+	err = dbConnect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OK!")
+	fmt.Print("Drop collection...")
+	err = dbDrop()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,7 +87,12 @@ func main() {
 	wg.Wait()
 	log.Println("Scan complete!")
 	log.Println("Retrive data from db...")
-	dbFind(bson.M{})
+	filter := bson.M{}
+	result, err := dbFind(filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result)
 }
 
 func loadJSON(filename string) (configuration, error) {
@@ -123,56 +135,52 @@ func checkHTTP(host string, port int) {
 	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "header": r.Header})
 }
 
-func dbInsert(data bson.M) {
+func dbInsert(data bson.M) error {
 	wg.Add(1)
 	defer wg.Done()
-	collection, err := dbConnect()
-	if err != nil {
-		log.Fatalln("Db not connected!")
-	}
-	collection.InsertOne(context.TODO(), data)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func dbDelete(filter bson.M) error {
-	collection, err := dbConnect()
-	if err != nil {
-		return err
-	}
-	collection.DeleteMany(context.TODO(), filter)
+	_, err := collection.InsertOne(context.TODO(), data)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func dbFind(filter bson.M) {
-	collection, err := dbConnect()
+func dbDelete(filter bson.M) error {
+	_, err := collection.DeleteMany(context.TODO(), filter)
 	if err != nil {
-		log.Fatalln("db not connected!")
+		return err
 	}
-	cur, err := collection.Find(context.TODO(), filter)
-	if err != nil {
-		log.Fatal("Error on Finding all the documents", err)
-	}
-	for cur.Next(context.TODO()) {
-		var result bson.M
-		err = cur.Decode(&result)
-		if err != nil {
-			log.Fatal("Error on Decoding the document", err)
-		}
-		fmt.Println(result)
-	}
+	return nil
 }
 
-func dbConnect() (*mongo.Collection, error) {
+func dbDrop() error {
+	err := collection.Drop(context.TODO())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func dbFind(filter bson.M) ([]bson.M, error) {
+	opts := options.Find()
+	opts.SetShowRecordID(false)
+	cursor, err := collection.Find(context.TODO(), filter, opts)
+	if err != nil {
+		return []bson.M{}, err
+	}
+	var result []bson.M
+	if err = cursor.All(context.TODO(), &result); err != nil {
+		return []bson.M{}, err
+	}
+	return result, nil
+}
+
+func dbConnect() error {
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(config.Db.URI))
 	err = client.Ping(context.TODO(), readpref.Primary())
 	if err != nil {
-		return nil, err
+		return err
 	}
-	collection := client.Database(config.Db.Db).Collection(config.Db.Coll)
-	return collection, nil
+	collection = client.Database(config.Db.Db).Collection(config.Db.Coll)
+	return nil
 }
