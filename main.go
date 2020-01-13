@@ -108,12 +108,13 @@ func main() {
 	wg.Wait()
 	log.Println("Scan complete!")
 	fmt.Print("Retrive data from database...")
-	filter := bson.M{}
+	filter := bson.M{"server": bson.M{"$ne": ""}}
 	result, err := dbFind(filter)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
+	fmt.Println("Print results:")
 	for _, r := range result {
 		fmt.Println(r.Host, r.Port, r.Server)
 	}
