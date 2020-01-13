@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"sync"
 	"time"
@@ -26,6 +25,7 @@ var (
 	config     configuration
 	nmapXML    nmap.NmapRun
 	collection *mongo.Collection
+	usenmap    bool
 )
 
 type configuration struct {
@@ -34,34 +34,35 @@ type configuration struct {
 		Db   string `json:"db"`
 		Coll string `json:"coll"`
 	} `json:"database"`
-	NmapParams string `json:"nmap"`
+	Hosts []struct {
+		Name  string `json:"name"`
+		Ports []int  `json:"ports"`
+	} `json:"hosts"`
 }
 
 func init() {
 	var err error
-	fmt.Print("Load config.json...")
+	fmt.Print("Load 'config.json' file...")
 	config, err = loadJSON("config.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
 	if _, err := os.Stat("nmap_output.xml"); os.IsNotExist(err) {
-		log.Println("nmap_output.xml not found!")
-		if _, err := os.Stat("nmap_input.txt"); !os.IsNotExist(err) {
-			fmt.Print("Run nmap...")
-			exec.Command("bash", "-c", string(config.NmapParams)).Run()
-			fmt.Println("ОК!")
-		} else {
-			log.Fatal("nmap_input.txt not found!")
+		usenmap = true
+		fmt.Println("File 'nmap_output.xml' not found!")
+		fmt.Println("Use hosts from 'config.json' file")
+		usenmap = false
+	} else {
+		usenmap = true
+		fmt.Print("Load 'nmap_output.xml' file...")
+		nmapXML, err = loadXML("nmap_output.xml")
+		if err != nil {
+			log.Fatal(err)
 		}
+		fmt.Println("OK!")
 	}
-	fmt.Print("Load nmap_output.xml...")
-	nmapXML, err = loadXML("nmap_output.xml")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("OK!")
-	fmt.Print("Connect to database...")
+	fmt.Print("Connect to mongodb...")
 	err = dbConnect()
 	if err != nil {
 		log.Fatal(err)
@@ -77,16 +78,25 @@ func init() {
 
 func main() {
 	log.Println("Start scan...")
-	for _, h := range nmapXML.Hosts {
-		for _, p := range h.Ports {
-			fmt.Println(string(h.Hostnames[0].Name), int(p.PortId))
-			go checkHTTP(string(h.Hostnames[0].Name), int(p.PortId))
+	if usenmap {
+		for _, h := range nmapXML.Hosts {
+			for _, p := range h.Ports {
+				fmt.Println(string(h.Hostnames[0].Name), int(p.PortId))
+				go checkHTTP(string(h.Hostnames[0].Name), int(p.PortId))
+			}
+		}
+	} else {
+		for _, h := range config.Hosts {
+			for _, p := range h.Ports {
+				fmt.Println(string(h.Name), int(p))
+				go checkHTTP(string(h.Name), int(p))
+			}
 		}
 	}
-	log.Printf("Active gorutines %v\n", runtime.NumGoroutine())
+	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	wg.Wait()
 	log.Println("Scan complete!")
-	log.Println("Retrive data from db...")
+	fmt.Println("Retrive data from database...")
 	filter := bson.M{}
 	result, err := dbFind(filter)
 	if err != nil {

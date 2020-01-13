@@ -4,5 +4,8 @@
         "db"   : "scannerDb",
         "coll" : "endpoints"
     },
-    "nmap": "nmap --open -p- -i nmap_input.txt -oX nmap_output.xml"
+    "hosts" : [
+        {"name":"scanme.nmap.org","ports":[22, 80]},
+        {"name":"getinside.cloud","ports":[22, 80, 4443, 8089, 8390]}
+    ]
 }
