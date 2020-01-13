@@ -94,6 +94,7 @@ func main() {
 		}
 	}
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
+	time.Sleep(1 * time.Second)
 	wg.Wait()
 	log.Println("Scan complete!")
 	fmt.Println("Retrive data from database...")
