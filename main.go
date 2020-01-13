@@ -41,11 +41,13 @@ type configuration struct {
 	} `json:"hosts"`
 }
 type document struct {
-	ID     primitive.ObjectID `bson:"_id"`
-	Host   string             `bson:"host"`
-	Port   int                `bson:"port"`
-	Status string             `bson:"status"`
-	URL    string             `bson:"url"`
+	ID      primitive.ObjectID `bson:"_id"`
+	Host    string             `bson:"host"`
+	Port    int                `bson:"port"`
+	Status  string             `bson:"status"`
+	Server  string             `bson:"server"`
+	Content string             `bson:"content"`
+	URL     string             `bson:"url"`
 }
 
 func init() {
@@ -105,14 +107,18 @@ func main() {
 	time.Sleep(1 * time.Second)
 	wg.Wait()
 	log.Println("Scan complete!")
-	fmt.Println("Retrive data from database...")
+	fmt.Print("Retrive data from database...")
 	filter := bson.M{}
 	result, err := dbFind(filter)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("OK!")
 	for _, r := range result {
-		fmt.Println(r.URL)
+		fmt.Println(r.Host, r.Port, r.Server)
+	}
+	for _, r := range result {
+		fmt.Println(r.URL, r.Status, r.Content)
 	}
 }
 
@@ -153,7 +159,7 @@ func checkHTTP(host string, port int) {
 	if err != nil {
 		return
 	}
-	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "header": r.Header})
+	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "server": r.Header.Get("Server"), "content": r.Header.Get("Content-Type")})
 }
 
 func dbInsert(data bson.M) error {
