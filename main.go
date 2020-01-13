@@ -91,14 +91,12 @@ func main() {
 	if usenmap {
 		for _, h := range nmapXML.Hosts {
 			for _, p := range h.Ports {
-				fmt.Println(string(h.Hostnames[0].Name), int(p.PortId))
 				go checkHTTP(string(h.Hostnames[0].Name), int(p.PortId))
 			}
 		}
 	} else {
 		for _, h := range config.Hosts {
 			for _, p := range h.Ports {
-				fmt.Println(string(h.Name), int(p))
 				go checkHTTP(string(h.Name), int(p))
 			}
 		}
@@ -108,13 +106,15 @@ func main() {
 	wg.Wait()
 	log.Println("Scan complete!")
 	fmt.Print("Retrive data from database...")
-	filter := bson.M{"server": bson.M{"$ne": ""}}
+	filter := bson.M{"status": bson.M{"$ne": ""}}
 	result, err := dbFind(filter)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
+	fmt.Println("______________")
 	fmt.Println("Print results:")
+	fmt.Println("______________")
 	for _, r := range result {
 		fmt.Println(r.Host, r.Port, r.Server)
 	}
