@@ -15,6 +15,7 @@ import (
 
 	"github.com/ambalabanov/go-nmap"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -38,6 +39,13 @@ type configuration struct {
 		Name  string `json:"name"`
 		Ports []int  `json:"ports"`
 	} `json:"hosts"`
+}
+type document struct {
+	ID     primitive.ObjectID `bson:"_id"`
+	Host   string             `bson:"host"`
+	Port   int                `bson:"port"`
+	Status string             `bson:"status"`
+	URL    string             `bson:"url"`
 }
 
 func init() {
@@ -103,7 +111,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result)
+	for _, r := range result {
+		fmt.Println(r.URL)
+	}
 }
 
 func loadJSON(filename string) (configuration, error) {
@@ -172,18 +182,22 @@ func dbDrop() error {
 	return nil
 }
 
-func dbFind(filter bson.M) ([]bson.M, error) {
+func dbFind(filter bson.M) ([]*document, error) {
 	opts := options.Find()
 	opts.SetShowRecordID(false)
 	cursor, err := collection.Find(context.TODO(), filter, opts)
 	if err != nil {
-		return []bson.M{}, err
+		return []*document{}, err
 	}
-	var result []bson.M
-	if err = cursor.All(context.TODO(), &result); err != nil {
-		return []bson.M{}, err
+	var results []*document
+	for cursor.Next(context.TODO()) {
+		var result document
+		if err := cursor.Decode(&result); err != nil {
+			return []*document{}, err
+		}
+		results = append(results, &result)
 	}
-	return result, nil
+	return results, nil
 }
 
 func dbConnect() error {
