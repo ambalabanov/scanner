@@ -41,13 +41,12 @@ type configuration struct {
 	} `json:"hosts"`
 }
 type document struct {
-	ID      primitive.ObjectID `bson:"_id"`
-	Host    string             `bson:"host"`
-	Port    int                `bson:"port"`
-	Status  string             `bson:"status"`
-	Server  string             `bson:"server"`
-	Content string             `bson:"content"`
-	URL     string             `bson:"url"`
+	ID     primitive.ObjectID `bson:"_id"`
+	Host   string             `bson:"host"`
+	Port   int                `bson:"port"`
+	Status int                `bson:"status"`
+	URL    string             `bson:"url"`
+	Header http.Header        `bson:"header"`
 }
 
 func init() {
@@ -116,10 +115,10 @@ func main() {
 	fmt.Println("Print results:")
 	fmt.Println("______________")
 	for _, r := range result {
-		fmt.Println(r.Host, r.Port, r.Server)
+		fmt.Println(r.Host, r.Port, r.Header.Get("Server"))
 	}
 	for _, r := range result {
-		fmt.Println(r.URL, r.Status, r.Content)
+		fmt.Println(r.URL, http.StatusText(r.Status), r.Header.Get("Content-Type"))
 	}
 }
 
@@ -160,7 +159,7 @@ func checkHTTP(host string, port int) {
 	if err != nil {
 		return
 	}
-	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.Status, "server": r.Header.Get("Server"), "content": r.Header.Get("Content-Type")})
+	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.StatusCode, "header": r.Header})
 }
 
 func dbInsert(data bson.M) error {
