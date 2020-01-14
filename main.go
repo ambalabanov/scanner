@@ -47,6 +47,8 @@ type document struct {
 	Status int                `bson:"status"`
 	URL    string             `bson:"url"`
 	Header http.Header        `bson:"header"`
+	Body   []byte             `bson:"body"`
+	Method string             `bson:"method"`
 }
 
 func init() {
@@ -118,7 +120,7 @@ func main() {
 		fmt.Println(r.Host, r.Port, r.Header.Get("Server"))
 	}
 	for _, r := range result {
-		fmt.Println(r.URL, http.StatusText(r.Status), r.Header.Get("Content-Type"))
+		fmt.Println(r.Method, r.URL, http.StatusText(r.Status), r.Header.Get("Content-Type"))
 	}
 }
 
@@ -155,11 +157,12 @@ func checkHTTP(host string, port int) {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
-	r, err := client.Head(url)
+	r, err := client.Get(url)
 	if err != nil {
 		return
 	}
-	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.StatusCode, "header": r.Header})
+	body, _ := ioutil.ReadAll(r.Body)
+	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.StatusCode, "header": r.Header, "body": body, "method": r.Request.Method})
 }
 
 func dbInsert(data bson.M) error {
