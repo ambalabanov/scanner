@@ -15,7 +15,6 @@ import (
 
 	"github.com/ambalabanov/go-nmap"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -41,14 +40,13 @@ type configuration struct {
 	} `json:"hosts"`
 }
 type document struct {
-	ID     primitive.ObjectID `bson:"_id"`
-	Host   string             `bson:"host"`
-	Port   int                `bson:"port"`
-	Status int                `bson:"status"`
-	URL    string             `bson:"url"`
-	Header http.Header        `bson:"header"`
-	Body   []byte             `bson:"body"`
-	Method string             `bson:"method"`
+	Method string      `bson:"method"`
+	Host   string      `bson:"host"`
+	Port   int         `bson:"port"`
+	URL    string      `bson:"url"`
+	Status int         `bson:"status"`
+	Header http.Header `bson:"header"`
+	Body   []byte      `bson:"body"`
 }
 
 func init() {
@@ -150,7 +148,7 @@ func loadXML(filename string) (nmap.NmapRun, error) {
 	return x, nil
 }
 
-func checkHTTP(host string, port int) {
+func checkHTTP(host string, port int) error {
 	wg.Add(1)
 	defer wg.Done()
 	url := fmt.Sprintf("http://%s:%d", host, port)
@@ -159,15 +157,27 @@ func checkHTTP(host string, port int) {
 	}
 	r, err := client.Get(url)
 	if err != nil {
-		return
+		return err
 	}
 	body, _ := ioutil.ReadAll(r.Body)
-	go dbInsert(bson.M{"host": host, "port": port, "url": url, "status": r.StatusCode, "header": r.Header, "body": body, "method": r.Request.Method})
+	d := document{
+		Method: r.Request.Method,
+		Host:   host,
+		Port:   port,
+		URL:    url,
+		Status: r.StatusCode,
+		Header: r.Header,
+		Body:   body,
+	}
+	err = d.Write()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func dbInsert(data bson.M) error {
-	wg.Add(1)
-	defer wg.Done()
+func (d *document) Write() error {
+	data, _ := bson.Marshal(d)
 	_, err := collection.InsertOne(context.TODO(), data)
 	if err != nil {
 		return err
@@ -192,9 +202,7 @@ func dbDrop() error {
 }
 
 func dbFind(filter bson.M) ([]*document, error) {
-	opts := options.Find()
-	opts.SetShowRecordID(false)
-	cursor, err := collection.Find(context.TODO(), filter, opts)
+	cursor, err := collection.Find(context.TODO(), filter)
 	if err != nil {
 		return []*document{}, err
 	}
