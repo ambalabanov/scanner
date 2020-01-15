@@ -26,6 +26,7 @@ var (
 	nmapXML    nmap.NmapRun
 	collection *mongo.Collection
 	usenmap    bool
+	hosts      []host
 )
 
 type configuration struct {
@@ -62,15 +63,22 @@ func init() {
 	if _, err := os.Stat("nmap_output.xml"); os.IsNotExist(err) {
 		fmt.Println("File 'nmap_output.xml' not found!")
 		fmt.Println("Use hosts from 'config.json' file")
-		usenmap = false
+		hosts = config.Hosts
 	} else {
-		usenmap = true
 		fmt.Print("Load 'nmap_output.xml' file...")
 		nmapXML, err = loadXML("nmap_output.xml")
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Println("OK!")
+		for _, n := range nmapXML.Hosts {
+			var h host
+			h.Name = string(n.Hostnames[0].Name)
+			for _, p := range n.Ports {
+				h.Ports = append(h.Ports, int(p.PortId))
+			}
+			hosts = append(hosts, h)
+		}
 	}
 	fmt.Print("Connect to mongodb...")
 	collection, err = dbConnect(config.Db)
@@ -88,19 +96,12 @@ func init() {
 
 func main() {
 	log.Println("Start scan...")
-	if usenmap {
-		for _, h := range nmapXML.Hosts {
-			for _, p := range h.Ports {
-				go checkHTTP(string(h.Hostnames[0].Name), int(p.PortId))
-			}
-		}
-	} else {
-		for _, h := range config.Hosts {
-			for _, p := range h.Ports {
-				go checkHTTP(string(h.Name), int(p))
-			}
+	for _, h := range hosts {
+		for _, p := range h.Ports {
+			go checkHTTP(h.Name, p)
 		}
 	}
+
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	time.Sleep(1 * time.Second)
 	wg.Wait()
