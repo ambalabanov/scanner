@@ -87,7 +87,7 @@ func init() {
 	}
 	fmt.Println("OK!")
 	fmt.Print("Drop collection...")
-	err = dbDrop()
+	err = dbDrop(collection)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -198,8 +198,8 @@ func dbDelete(filter bson.M) error {
 	return nil
 }
 
-func dbDrop() error {
-	err := collection.Drop(context.TODO())
+func dbDrop(c *mongo.Collection) error {
+	err := c.Drop(context.TODO())
 	if err != nil {
 		return err
 	}
