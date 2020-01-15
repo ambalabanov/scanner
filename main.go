@@ -55,6 +55,8 @@ type document struct {
 	Body   []byte      `bson:"body"`
 }
 
+type documents []document
+
 func init() {
 	var err error
 	fmt.Print("Load config.json...")
@@ -109,24 +111,26 @@ func main() {
 	fmt.Println("Complete scan")
 	fmt.Print("Retrive data from database...")
 	filter := bson.M{"status": bson.M{"$ne": ""}}
-	result, err := dbFind(filter)
+	var results documents
+	err := results.Read(collection, filter)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Println("Print results...")
-	fmt.Println("Count: ", len(result))
-	for _, r := range result {
-		fmt.Println(r.Host, r.Header.Get("Server"))
-	}
-	for _, r := range result {
+	fmt.Println("Print ALL documents")
+	fmt.Println("Count: ", len(results))
+	for _, r := range results {
 		fmt.Println(r.Method, r.Scheme, r.Host, http.StatusText(r.Status), r.Header.Get("Content-Type"))
 	}
+	fmt.Println("Print ONE document")
+	var result document
+	err = result.Read(collection, bson.M{"name": bson.M{"$eq": "getinside.cloud"}, "port": bson.M{"$lt": 1024}})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(result.Host)
+	fmt.Println(string(result.Body))
 
-	var r document
-	r.Read(collection, bson.M{"name": bson.M{"$eq": "getinside.cloud"}, "port": bson.M{"$lt": 1024}})
-	fmt.Println(r.Host)
-	fmt.Println(string(r.Body))
 }
 
 func loadJSON(filename string) (configuration, error) {
@@ -203,6 +207,21 @@ func (d *document) Read(c *mongo.Collection, f bson.M) error {
 	}
 	return nil
 }
+func (d *documents) Read(c *mongo.Collection, f bson.M) error {
+	cursor, err := c.Find(context.TODO(), f)
+	if err != nil {
+		return err
+	}
+	for cursor.Next(context.TODO()) {
+		var result document
+		if err := cursor.Decode(&result); err != nil {
+			return err
+		}
+		*d = append(*d, result)
+	}
+	return nil
+}
+
 func dbDelete(filter bson.M) error {
 	_, err := collection.DeleteMany(context.TODO(), filter)
 	if err != nil {
@@ -217,22 +236,6 @@ func dbDrop(c *mongo.Collection) error {
 		return err
 	}
 	return nil
-}
-
-func dbFind(filter bson.M) ([]*document, error) {
-	cursor, err := collection.Find(context.TODO(), filter)
-	if err != nil {
-		return []*document{}, err
-	}
-	var results []*document
-	for cursor.Next(context.TODO()) {
-		var result document
-		if err := cursor.Decode(&result); err != nil {
-			return []*document{}, err
-		}
-		results = append(results, &result)
-	}
-	return results, nil
 }
 
 func dbConnect(d database) (*mongo.Collection, error) {
