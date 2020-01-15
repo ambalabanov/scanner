@@ -20,7 +20,6 @@ import (
 
 var (
 	wg         sync.WaitGroup
-	config     configuration
 	collection *mongo.Collection
 	hosts      []host
 )
@@ -58,8 +57,8 @@ type documents []document
 
 func init() {
 	fmt.Print("Load config.json...")
-	config, err := loadJSON("config.json")
-	if err != nil {
+	var config configuration
+	if err := config.Load("config.json"); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
@@ -132,16 +131,15 @@ func main() {
 
 }
 
-func loadJSON(filename string) (configuration, error) {
+func (c *configuration) Load(filename string) error {
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return configuration{}, err
+		return err
 	}
-	var c configuration
-	if err := json.Unmarshal(bytes, &c); err != nil {
-		return configuration{}, err
+	if err := json.Unmarshal(bytes, c); err != nil {
+		return err
 	}
-	return c, nil
+	return nil
 }
 
 func getHTTP(name string, port int) error {
