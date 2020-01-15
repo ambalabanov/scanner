@@ -100,7 +100,7 @@ func main() {
 	fmt.Print("Start scan...")
 	for _, h := range hosts {
 		for _, p := range h.Ports {
-			go checkHTTP(h.Name, p)
+			go getHTTP(h.Name, p)
 		}
 	}
 	fmt.Println("OK!")
@@ -152,7 +152,7 @@ func loadXML(filename string) (nmap.NmapRun, error) {
 	return x, nil
 }
 
-func checkHTTP(name string, port int) error {
+func getHTTP(name string, port int) error {
 	wg.Add(1)
 	defer wg.Done()
 	url := fmt.Sprintf("http://%s:%d", name, port)
