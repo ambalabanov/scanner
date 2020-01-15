@@ -43,10 +43,12 @@ type database struct {
 	Coll string `json:"coll"`
 }
 type document struct {
-	Method string      `bson:"method"`
-	Host   string      `bson:"host"`
+	Name   string      `bson:"name"`
 	Port   int         `bson:"port"`
 	URL    string      `bson:"url"`
+	Method string      `bson:"method"`
+	Scheme string      `bson:"scheme"`
+	Host   string      `bson:"host"`
 	Status int         `bson:"status"`
 	Header http.Header `bson:"header"`
 	Body   []byte      `bson:"body"`
@@ -60,8 +62,8 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	if _, err := os.Stat("nmap_output.xml"); os.IsNotExist(err) {
-		fmt.Println("File 'nmap_output.xml' not found!")
+	if _, err := os.Stat("nmap.xml"); os.IsNotExist(err) {
+		fmt.Println("File 'nmap.xml' not found!")
 		fmt.Println("Use hosts from 'config.json' file")
 		hosts = config.Hosts
 	} else {
@@ -95,17 +97,17 @@ func init() {
 }
 
 func main() {
-	log.Println("Start scan...")
+	fmt.Print("Start scan...")
 	for _, h := range hosts {
 		for _, p := range h.Ports {
 			go checkHTTP(h.Name, p)
 		}
 	}
-
+	fmt.Println("OK!")
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	time.Sleep(1 * time.Second)
 	wg.Wait()
-	log.Println("Scan complete!")
+	fmt.Println("Scan complete!")
 	fmt.Print("Retrive data from database...")
 	filter := bson.M{"status": bson.M{"$ne": ""}}
 	result, err := dbFind(filter)
@@ -117,10 +119,10 @@ func main() {
 	fmt.Println("Print results:")
 	fmt.Println("______________")
 	for _, r := range result {
-		fmt.Println(r.Host, r.Port, r.Header.Get("Server"))
+		fmt.Println(r.Host, r.Header.Get("Server"))
 	}
 	for _, r := range result {
-		fmt.Println(r.Method, r.URL, http.StatusText(r.Status), r.Header.Get("Content-Type"))
+		fmt.Println(r.Method, r.Scheme, r.Host, http.StatusText(r.Status), r.Header.Get("Content-Type"))
 	}
 }
 
@@ -150,10 +152,10 @@ func loadXML(filename string) (nmap.NmapRun, error) {
 	return x, nil
 }
 
-func checkHTTP(host string, port int) error {
+func checkHTTP(name string, port int) error {
 	wg.Add(1)
 	defer wg.Done()
-	url := fmt.Sprintf("http://%s:%d", host, port)
+	url := fmt.Sprintf("http://%s:%d", name, port)
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -163,10 +165,12 @@ func checkHTTP(host string, port int) error {
 	}
 	body, _ := ioutil.ReadAll(r.Body)
 	d := document{
-		Method: r.Request.Method,
-		Host:   host,
+		Name:   name,
 		Port:   port,
 		URL:    url,
+		Method: r.Request.Method,
+		Scheme: r.Request.URL.Scheme,
+		Host:   r.Request.Host,
 		Status: r.StatusCode,
 		Header: r.Header,
 		Body:   body,
