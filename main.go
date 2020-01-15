@@ -222,8 +222,8 @@ func (d *documents) Read(c *mongo.Collection, f bson.M) error {
 	return nil
 }
 
-func dbDelete(filter bson.M) error {
-	_, err := collection.DeleteMany(context.TODO(), filter)
+func dbDelete(c *mongo.Collection, filter bson.M) error {
+	_, err := c.DeleteMany(context.TODO(), filter)
 	if err != nil {
 		return err
 	}
