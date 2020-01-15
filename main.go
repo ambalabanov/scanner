@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -66,7 +65,11 @@ func init() {
 	fmt.Println("OK!")
 	if config.Nmap.Use {
 		fmt.Printf("Use hosts from %s\n", config.Nmap.File)
-		nmapXML, err := loadXML(config.Nmap.File)
+		bytes, err := ioutil.ReadFile(config.Nmap.File)
+		if err != nil {
+			log.Fatal(err)
+		}
+		nmapXML, err := nmap.Parse(bytes)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -139,18 +142,6 @@ func loadJSON(filename string) (configuration, error) {
 		return configuration{}, err
 	}
 	return c, nil
-}
-
-func loadXML(filename string) (nmap.NmapRun, error) {
-	bytes, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nmap.NmapRun{}, err
-	}
-	var x nmap.NmapRun
-	if err := xml.Unmarshal(bytes, &x); err != nil {
-		return nmap.NmapRun{}, err
-	}
-	return x, nil
 }
 
 func getHTTP(name string, port int) error {
