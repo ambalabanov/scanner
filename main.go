@@ -115,15 +115,19 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Println("______________")
-	fmt.Println("Print results:")
-	fmt.Println("______________")
+	fmt.Println("Print results...")
+	fmt.Println("Count: ", cap(result))
 	for _, r := range result {
 		fmt.Println(r.Host, r.Header.Get("Server"))
 	}
 	for _, r := range result {
 		fmt.Println(r.Method, r.Scheme, r.Host, http.StatusText(r.Status), r.Header.Get("Content-Type"))
 	}
+
+	var r document
+	r.Read(collection, bson.M{"name": bson.M{"$eq": "getinside.cloud"}, "port": bson.M{"$lt": 1024}})
+	fmt.Println(r.Host)
+	fmt.Println(string(r.Body))
 }
 
 func loadJSON(filename string) (configuration, error) {
@@ -193,7 +197,13 @@ func (d *document) Write(c *mongo.Collection) error {
 	}
 	return nil
 }
-
+func (d *document) Read(c *mongo.Collection, f bson.M) error {
+	err := collection.FindOne(context.Background(), f).Decode(&d)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func dbDelete(filter bson.M) error {
 	_, err := collection.DeleteMany(context.TODO(), filter)
 	if err != nil {
