@@ -2,7 +2,7 @@
     "database" : {
         "uri"  : "mongodb://localhost:27017",
         "db"   : "scannerDb",
-        "coll" : "endpoints"
+        "coll" : "scannerCol"
     },
     "hosts" : [
         {"name":"scanme.nmap.org","ports":[22, 80]},

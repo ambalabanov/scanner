@@ -29,15 +29,17 @@ var (
 )
 
 type configuration struct {
-	Db struct {
-		URI  string `json:"uri"`
-		Db   string `json:"db"`
-		Coll string `json:"coll"`
-	} `json:"database"`
-	Hosts []struct {
-		Name  string `json:"name"`
-		Ports []int  `json:"ports"`
-	} `json:"hosts"`
+	Db    database `json:"database"`
+	Hosts []host   `json:"hosts"`
+}
+type host struct {
+	Name  string `json:"name"`
+	Ports []int  `json:"ports"`
+}
+type database struct {
+	URI  string `json:"uri"`
+	Db   string `json:"db"`
+	Coll string `json:"coll"`
 }
 type document struct {
 	Method string      `bson:"method"`
@@ -58,7 +60,6 @@ func init() {
 	}
 	fmt.Println("OK!")
 	if _, err := os.Stat("nmap_output.xml"); os.IsNotExist(err) {
-		usenmap = true
 		fmt.Println("File 'nmap_output.xml' not found!")
 		fmt.Println("Use hosts from 'config.json' file")
 		usenmap = false
@@ -72,7 +73,7 @@ func init() {
 		fmt.Println("OK!")
 	}
 	fmt.Print("Connect to mongodb...")
-	err = dbConnect()
+	collection, err = dbConnect(config.Db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -169,16 +170,19 @@ func checkHTTP(host string, port int) error {
 		Header: r.Header,
 		Body:   body,
 	}
-	err = d.Write()
+	err = d.Write(collection)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (d *document) Write() error {
-	data, _ := bson.Marshal(d)
-	_, err := collection.InsertOne(context.TODO(), data)
+func (d *document) Write(c *mongo.Collection) error {
+	data, err := bson.Marshal(d)
+	if err != nil {
+		return err
+	}
+	_, err = c.InsertOne(context.TODO(), data)
 	if err != nil {
 		return err
 	}
@@ -217,12 +221,12 @@ func dbFind(filter bson.M) ([]*document, error) {
 	return results, nil
 }
 
-func dbConnect() error {
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(config.Db.URI))
+func dbConnect(d database) (*mongo.Collection, error) {
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(d.URI))
 	err = client.Ping(context.TODO(), readpref.Primary())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	collection = client.Database(config.Db.Db).Collection(config.Db.Coll)
-	return nil
+	collection = client.Database(d.Db).Collection(d.Coll)
+	return collection, nil
 }
