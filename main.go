@@ -58,9 +58,8 @@ type document struct {
 type documents []document
 
 func init() {
-	var err error
 	fmt.Print("Load config.json...")
-	config, err = loadJSON("config.json")
+	config, err := loadJSON("config.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,14 +83,13 @@ func init() {
 		hosts = config.Hosts
 	}
 	fmt.Print("Connect to mongodb...")
-	collection, err = dbConnect(config.Db)
+	collection, err := dbConnect(config.Db)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
 	fmt.Print("Drop collection...")
-	err = dbDrop(collection)
-	if err != nil {
+	if err := dbDrop(collection); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
@@ -112,8 +110,7 @@ func main() {
 	fmt.Print("Retrive data from database...")
 	filter := bson.M{"status": bson.M{"$ne": ""}}
 	var results documents
-	err := results.Read(collection, filter)
-	if err != nil {
+	if err := results.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
@@ -124,8 +121,7 @@ func main() {
 	}
 	fmt.Println("Print ONE document")
 	var result document
-	err = result.Read(collection, bson.M{"name": bson.M{"$eq": "getinside.cloud"}, "port": bson.M{"$lt": 1024}})
-	if err != nil {
+	if err := result.Read(collection, bson.M{"name": bson.M{"$eq": "getinside.cloud"}, "port": bson.M{"$lt": 1024}}); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(result.Host)
@@ -139,8 +135,7 @@ func loadJSON(filename string) (configuration, error) {
 		return configuration{}, err
 	}
 	var c configuration
-	err = json.Unmarshal(bytes, &c)
-	if err != nil {
+	if err := json.Unmarshal(bytes, &c); err != nil {
 		return configuration{}, err
 	}
 	return c, nil
@@ -152,8 +147,7 @@ func loadXML(filename string) (nmap.NmapRun, error) {
 		return nmap.NmapRun{}, err
 	}
 	var x nmap.NmapRun
-	err = xml.Unmarshal(bytes, &x)
-	if err != nil {
+	if err := xml.Unmarshal(bytes, &x); err != nil {
 		return nmap.NmapRun{}, err
 	}
 	return x, nil
@@ -182,8 +176,7 @@ func getHTTP(name string, port int) error {
 		Header: r.Header,
 		Body:   body,
 	}
-	err = d.Write(collection)
-	if err != nil {
+	if err := d.Write(collection); err != nil {
 		return err
 	}
 	return nil
@@ -201,12 +194,12 @@ func (d *document) Write(c *mongo.Collection) error {
 	return nil
 }
 func (d *document) Read(c *mongo.Collection, f bson.M) error {
-	err := c.FindOne(context.Background(), f).Decode(&d)
-	if err != nil {
+	if err := c.FindOne(context.Background(), f).Decode(&d); err != nil {
 		return err
 	}
 	return nil
 }
+
 func (d *documents) Read(c *mongo.Collection, f bson.M) error {
 	cursor, err := c.Find(context.TODO(), f)
 	if err != nil {
@@ -223,16 +216,14 @@ func (d *documents) Read(c *mongo.Collection, f bson.M) error {
 }
 
 func dbDelete(c *mongo.Collection, filter bson.M) error {
-	_, err := c.DeleteMany(context.TODO(), filter)
-	if err != nil {
+	if _, err := c.DeleteMany(context.TODO(), filter); err != nil {
 		return err
 	}
 	return nil
 }
 
 func dbDrop(c *mongo.Collection) error {
-	err := c.Drop(context.TODO())
-	if err != nil {
+	if err := c.Drop(context.TODO()); err != nil {
 		return err
 	}
 	return nil
@@ -240,8 +231,7 @@ func dbDrop(c *mongo.Collection) error {
 
 func dbConnect(d database) (*mongo.Collection, error) {
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(d.URI))
-	err = client.Ping(context.TODO(), readpref.Primary())
-	if err != nil {
+	if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		return nil, err
 	}
 	collection = client.Database(d.Db).Collection(d.Coll)
