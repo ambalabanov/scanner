@@ -85,7 +85,8 @@ func init() {
 		hosts = config.Hosts
 	}
 	fmt.Print("Connect to mongodb...")
-	collection, err := dbConnect(config.Db)
+	var err error
+	collection, err = dbConnect(config.Db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -223,6 +224,5 @@ func dbConnect(d database) (*mongo.Collection, error) {
 	if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		return nil, err
 	}
-	collection = client.Database(d.Db).Collection(d.Coll)
-	return collection, nil
+	return client.Database(d.Db).Collection(d.Coll), nil
 }
