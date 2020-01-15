@@ -23,9 +23,7 @@ import (
 var (
 	wg         sync.WaitGroup
 	config     configuration
-	nmapXML    nmap.NmapRun
 	collection *mongo.Collection
-	usenmap    bool
 	hosts      []host
 )
 
@@ -68,7 +66,7 @@ func init() {
 		hosts = config.Hosts
 	} else {
 		fmt.Print("Load 'nmap_output.xml' file...")
-		nmapXML, err = loadXML("nmap_output.xml")
+		nmapXML, err := loadXML("nmap_output.xml")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -116,7 +114,7 @@ func main() {
 	}
 	fmt.Println("OK!")
 	fmt.Println("Print results...")
-	fmt.Println("Count: ", cap(result))
+	fmt.Println("Count: ", len(result))
 	for _, r := range result {
 		fmt.Println(r.Host, r.Header.Get("Server"))
 	}
