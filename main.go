@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -30,6 +29,10 @@ var (
 type configuration struct {
 	Db    database `json:"database"`
 	Hosts []host   `json:"hosts"`
+	Nmap  struct {
+		Use  bool   `json:"use"`
+		File string `json:"file"`
+	} `json:"nmap"`
 }
 type host struct {
 	Name  string `json:"name"`
@@ -54,23 +57,18 @@ type document struct {
 
 func init() {
 	var err error
-	fmt.Print("Load 'config.json' file...")
+	fmt.Print("Load config.json...")
 	config, err = loadJSON("config.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	if _, err := os.Stat("nmap.xml"); os.IsNotExist(err) {
-		fmt.Println("File 'nmap.xml' not found!")
-		fmt.Println("Use hosts from 'config.json' file")
-		hosts = config.Hosts
-	} else {
-		fmt.Print("Load 'nmap_output.xml' file...")
-		nmapXML, err := loadXML("nmap_output.xml")
+	if config.Nmap.Use {
+		fmt.Printf("Use hosts from %s\n", config.Nmap.File)
+		nmapXML, err := loadXML(config.Nmap.File)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("OK!")
 		for _, n := range nmapXML.Hosts {
 			var h host
 			h.Name = string(n.Hostnames[0].Name)
@@ -79,6 +77,9 @@ func init() {
 			}
 			hosts = append(hosts, h)
 		}
+	} else {
+		fmt.Println("Use hosts from config.json")
+		hosts = config.Hosts
 	}
 	fmt.Print("Connect to mongodb...")
 	collection, err = dbConnect(config.Db)
@@ -105,7 +106,7 @@ func main() {
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	time.Sleep(1 * time.Second)
 	wg.Wait()
-	fmt.Println("Scan complete!")
+	fmt.Println("Complete scan")
 	fmt.Print("Retrive data from database...")
 	filter := bson.M{"status": bson.M{"$ne": ""}}
 	result, err := dbFind(filter)
@@ -196,7 +197,7 @@ func (d *document) Write(c *mongo.Collection) error {
 	return nil
 }
 func (d *document) Read(c *mongo.Collection, f bson.M) error {
-	err := collection.FindOne(context.Background(), f).Decode(&d)
+	err := c.FindOne(context.Background(), f).Decode(&d)
 	if err != nil {
 		return err
 	}
