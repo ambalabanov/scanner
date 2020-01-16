@@ -155,7 +155,7 @@ func getHTTP(name string, port int) error {
 		return err
 	}
 	body, _ := ioutil.ReadAll(r.Body)
-	d := document{
+	doc := document{
 		Name:   name,
 		Port:   port,
 		URL:    url,
@@ -166,7 +166,7 @@ func getHTTP(name string, port int) error {
 		Header: r.Header,
 		Body:   body,
 	}
-	if err := d.Write(collection); err != nil {
+	if err := doc.Write(collection); err != nil {
 		return err
 	}
 	return nil
@@ -183,6 +183,18 @@ func (d *document) Write(c *mongo.Collection) error {
 	}
 	return nil
 }
+
+func (d *documents) Write(c *mongo.Collection) error {
+	docs := *d
+	for _, doc := range docs {
+		err := doc.Write(c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *document) Read(c *mongo.Collection, f bson.M) error {
 	if err := c.FindOne(context.Background(), f).Decode(&d); err != nil {
 		return err
