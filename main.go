@@ -84,10 +84,12 @@ func init() {
 func main() {
 	fmt.Print("Init scan...")
 	for _, host := range hosts {
-		go host.Scan()
+		for _, s := range []string{"http", "https"} {
+			host.Scheme = s
+			go host.Scan()
+		}
 	}
 	fmt.Println("OK!")
-	fmt.Printf("Count ports %v\n", len(hosts))
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	fmt.Print("Complete scan...")
 	time.Sleep(1 * time.Second)
@@ -112,7 +114,6 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println(result.Host)
-	fmt.Println(string(result.Body))
 
 }
 
@@ -162,7 +163,7 @@ func (d *documents) Load(config *configuration) error {
 func (d document) Scan() error {
 	wg.Add(1)
 	defer wg.Done()
-	url := fmt.Sprintf("http://%s:%d", d.Name, d.Port)
+	url := fmt.Sprintf("%s://%s:%d", d.Scheme, d.Name, d.Port)
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -172,7 +173,6 @@ func (d document) Scan() error {
 	}
 	body, _ := ioutil.ReadAll(r.Body)
 	d.URL = url
-	d.Method = r.Request.Method
 	d.Scheme = r.Request.URL.Scheme
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
