@@ -108,7 +108,7 @@ func main() {
 	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Host)
+	fmt.Println(result.URL)
 
 }
 
@@ -171,6 +171,7 @@ func (d document) Scan() error {
 	}
 	body, _ := ioutil.ReadAll(r.Body)
 	d.URL = url
+	d.Method = r.Request.Method
 	d.Scheme = r.Request.URL.Scheme
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
