@@ -50,7 +50,7 @@ type document struct {
 	Host   string      `bson:"host"`
 	Status int         `bson:"status"`
 	Header http.Header `bson:"header"`
-	Body   []byte      `bson:"body"`
+	Body   string      `bson:"body"`
 }
 type documents []document
 
@@ -104,11 +104,11 @@ func main() {
 	}
 	fmt.Println("Print ONE document")
 	var result document
-	filter = bson.M{"name": "getinside.cloud", "scheme": "https", "port": bson.M{"$eq": 8390}}
+	filter = bson.M{"name": "scanme.nmap.org", "port": bson.M{"$eq": 80}}
 	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.URL)
+	fmt.Println(result.Body)
 
 }
 
@@ -176,7 +176,7 @@ func (d document) Scan() error {
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
 	d.Header = r.Header
-	d.Body = body
+	d.Body = string(body)
 
 	if err := d.Write(collection); err != nil {
 		return err
