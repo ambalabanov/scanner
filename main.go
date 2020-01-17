@@ -84,7 +84,7 @@ func init() {
 func main() {
 	fmt.Print("Start scan...")
 	for _, host := range hosts {
-		host.Scan()
+		go host.Scan()
 	}
 	fmt.Println("OK!")
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
@@ -156,7 +156,7 @@ func (d *documents) Load(config *configuration) error {
 	return nil
 }
 
-func (d *document) Scan() error {
+func (d document) Scan() error {
 	wg.Add(1)
 	defer wg.Done()
 	url := fmt.Sprintf("http://%s:%d", d.Name, d.Port)
