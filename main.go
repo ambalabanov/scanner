@@ -245,8 +245,8 @@ func dbDrop(c *mongo.Collection) error {
 }
 
 func dbConnect(d database) (*mongo.Collection, error) {
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(d.URI))
-	if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
+	client, _ := mongo.Connect(context.TODO(), options.Client().ApplyURI(d.URI))
+	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		return nil, err
 	}
 	return client.Database(d.Db).Collection(d.Coll), nil
