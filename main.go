@@ -61,7 +61,6 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-
 	fmt.Print("Connect to mongodb...")
 	var err error
 	if collection, err = dbConnect(config.Db); err != nil {
@@ -73,7 +72,7 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Print("Load hosts")
+	fmt.Print("Load hosts...")
 	if err := hosts.Load(&config); err != nil {
 		log.Fatal(err)
 	}
@@ -83,10 +82,7 @@ func init() {
 func main() {
 	fmt.Print("Init scan...")
 	for _, host := range hosts {
-		for _, s := range []string{"http", "https"} {
-			host.Scheme = s
-			go host.Scan()
-		}
+		go host.Scan()
 	}
 	fmt.Println("OK!")
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
@@ -128,32 +124,34 @@ func (c *configuration) Load(filename string) error {
 }
 
 func (d *documents) Load(config *configuration) error {
-	if config.Nmap.Use {
-		fmt.Printf("(%s)...", config.Nmap.File)
-		bytes, err := ioutil.ReadFile(config.Nmap.File)
-		if err != nil {
-			return err
-		}
-		nmapXML, err := nmap.Parse(bytes)
-		if err != nil {
-			return err
-		}
-		for _, n := range nmapXML.Hosts {
-			var doc document
-			for _, p := range n.Ports {
-				doc.Name = string(n.Hostnames[0].Name)
-				doc.Port = int(p.PortId)
-				*d = append(*d, doc)
+	for _, s := range []string{"http", "https"} {
+		if config.Nmap.Use {
+			bytes, err := ioutil.ReadFile(config.Nmap.File)
+			if err != nil {
+				return err
 			}
-		}
-	} else {
-		fmt.Print("(config.json)...")
-		for _, n := range config.Hosts {
-			var doc document
-			for _, p := range n.Ports {
-				doc.Name = n.Name
-				doc.Port = p
-				*d = append(*d, doc)
+			nmapXML, err := nmap.Parse(bytes)
+			if err != nil {
+				return err
+			}
+			for _, n := range nmapXML.Hosts {
+				var doc document
+				for _, p := range n.Ports {
+					doc.Name = string(n.Hostnames[0].Name)
+					doc.Port = int(p.PortId)
+					doc.Scheme = s
+					*d = append(*d, doc)
+				}
+			}
+		} else {
+			for _, n := range config.Hosts {
+				var doc document
+				for _, p := range n.Ports {
+					doc.Name = n.Name
+					doc.Port = p
+					doc.Scheme = s
+					*d = append(*d, doc)
+				}
 			}
 		}
 	}
