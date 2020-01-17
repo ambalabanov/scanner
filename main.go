@@ -56,8 +56,8 @@ type document struct {
 type documents []document
 
 func init() {
-	var config configuration
 	fmt.Print("Load config.json...")
+	var config configuration
 	if err := config.Load("config.json"); err != nil {
 		log.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Print("Load hosts...")
+	fmt.Print("Load hosts")
 	if err := hosts.Load(&config); err != nil {
 		log.Fatal(err)
 	}
@@ -82,15 +82,17 @@ func init() {
 }
 
 func main() {
-	fmt.Print("Start scan...")
+	fmt.Print("Init scan...")
 	for _, host := range hosts {
 		go host.Scan()
 	}
 	fmt.Println("OK!")
+	fmt.Printf("Count ports %v\n", len(hosts))
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
+	fmt.Print("Complete scan...")
 	time.Sleep(1 * time.Second)
 	wg.Wait()
-	fmt.Println("Complete scan")
+	fmt.Println("OK!")
 	fmt.Print("Retrive data from database...")
 	filter := bson.M{"status": bson.M{"$ne": ""}}
 	var results documents
@@ -99,13 +101,14 @@ func main() {
 	}
 	fmt.Println("OK!")
 	fmt.Println("Print ALL documents")
-	fmt.Println("Count: ", len(results))
+	fmt.Println("Count ", len(results))
 	for _, r := range results {
 		fmt.Println(r.Method, r.Scheme, r.Host, http.StatusText(r.Status), r.Header.Get("Content-Type"))
 	}
 	fmt.Println("Print ONE document")
 	var result document
-	if err := result.Read(collection, bson.M{"name": bson.M{"$eq": "getinside.cloud"}, "port": bson.M{"$lt": 1024}}); err != nil {
+	filter = bson.M{"name": bson.M{"$eq": "getinside.cloud"}, "port": bson.M{"$lt": 1024}}
+	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(result.Host)
@@ -125,7 +128,7 @@ func (c *configuration) Load(filename string) error {
 }
 func (d *documents) Load(config *configuration) error {
 	if config.Nmap.Use {
-		fmt.Printf("Use hosts from %s\n", config.Nmap.File)
+		fmt.Printf("(%s)...", config.Nmap.File)
 		bytes, err := ioutil.ReadFile(config.Nmap.File)
 		if err != nil {
 			return err
@@ -143,7 +146,7 @@ func (d *documents) Load(config *configuration) error {
 			}
 		}
 	} else {
-		fmt.Println("Use hosts from config.json")
+		fmt.Print("(config.json)...")
 		for _, n := range config.Hosts {
 			var doc document
 			for _, p := range n.Ports {
