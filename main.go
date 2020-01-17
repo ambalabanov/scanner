@@ -21,7 +21,7 @@ import (
 var (
 	wg         sync.WaitGroup
 	collection *mongo.Collection
-	hosts      []host
+	hosts      documents
 )
 
 type configuration struct {
@@ -56,38 +56,16 @@ type document struct {
 type documents []document
 
 func init() {
-	fmt.Print("Load config.json...")
 	var config configuration
+	fmt.Print("Load config.json...")
 	if err := config.Load("config.json"); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	if config.Nmap.Use {
-		fmt.Printf("Use hosts from %s\n", config.Nmap.File)
-		bytes, err := ioutil.ReadFile(config.Nmap.File)
-		if err != nil {
-			log.Fatal(err)
-		}
-		nmapXML, err := nmap.Parse(bytes)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, n := range nmapXML.Hosts {
-			var h host
-			h.Name = string(n.Hostnames[0].Name)
-			for _, p := range n.Ports {
-				h.Ports = append(h.Ports, int(p.PortId))
-			}
-			hosts = append(hosts, h)
-		}
-	} else {
-		fmt.Println("Use hosts from config.json")
-		hosts = config.Hosts
-	}
+
 	fmt.Print("Connect to mongodb...")
 	var err error
-	collection, err = dbConnect(config.Db)
-	if err != nil {
+	if collection, err = dbConnect(config.Db); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
@@ -96,14 +74,17 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
+	fmt.Print("Load hosts...")
+	if err := hosts.Load(&config); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OK!")
 }
 
 func main() {
 	fmt.Print("Start scan...")
-	for _, h := range hosts {
-		for _, p := range h.Ports {
-			go getHTTP(h.Name, p)
-		}
+	for _, host := range hosts {
+		host.Scan()
 	}
 	fmt.Println("OK!")
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
@@ -142,11 +123,43 @@ func (c *configuration) Load(filename string) error {
 	}
 	return nil
 }
+func (d *documents) Load(config *configuration) error {
+	if config.Nmap.Use {
+		fmt.Printf("Use hosts from %s\n", config.Nmap.File)
+		bytes, err := ioutil.ReadFile(config.Nmap.File)
+		if err != nil {
+			return err
+		}
+		nmapXML, err := nmap.Parse(bytes)
+		if err != nil {
+			return err
+		}
+		for _, n := range nmapXML.Hosts {
+			var doc document
+			for _, p := range n.Ports {
+				doc.Name = string(n.Hostnames[0].Name)
+				doc.Port = int(p.PortId)
+				*d = append(*d, doc)
+			}
+		}
+	} else {
+		fmt.Println("Use hosts from config.json")
+		for _, n := range config.Hosts {
+			var doc document
+			for _, p := range n.Ports {
+				doc.Name = n.Name
+				doc.Port = p
+				*d = append(*d, doc)
+			}
+		}
+	}
+	return nil
+}
 
-func getHTTP(name string, port int) error {
+func (d *document) Scan() error {
 	wg.Add(1)
 	defer wg.Done()
-	url := fmt.Sprintf("http://%s:%d", name, port)
+	url := fmt.Sprintf("http://%s:%d", d.Name, d.Port)
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -155,18 +168,15 @@ func getHTTP(name string, port int) error {
 		return err
 	}
 	body, _ := ioutil.ReadAll(r.Body)
-	doc := document{
-		Name:   name,
-		Port:   port,
-		URL:    url,
-		Method: r.Request.Method,
-		Scheme: r.Request.URL.Scheme,
-		Host:   r.Request.Host,
-		Status: r.StatusCode,
-		Header: r.Header,
-		Body:   body,
-	}
-	if err := doc.Write(collection); err != nil {
+	d.URL = url
+	d.Method = r.Request.Method
+	d.Scheme = r.Request.URL.Scheme
+	d.Host = r.Request.Host
+	d.Status = r.StatusCode
+	d.Header = r.Header
+	d.Body = body
+
+	if err := d.Write(collection); err != nil {
 		return err
 	}
 	return nil
