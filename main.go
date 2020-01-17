@@ -52,7 +52,6 @@ type document struct {
 	Header http.Header `bson:"header"`
 	Body   []byte      `bson:"body"`
 }
-
 type documents []document
 
 func init() {
@@ -109,7 +108,7 @@ func main() {
 	}
 	fmt.Println("Print ONE document")
 	var result document
-	filter = bson.M{"name": bson.M{"$eq": "getinside.cloud"}, "port": bson.M{"$lt": 1024}}
+	filter = bson.M{"name": "getinside.cloud", "scheme": "https", "port": bson.M{"$eq": 8390}}
 	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
@@ -127,6 +126,7 @@ func (c *configuration) Load(filename string) error {
 	}
 	return nil
 }
+
 func (d *documents) Load(config *configuration) error {
 	if config.Nmap.Use {
 		fmt.Printf("(%s)...", config.Nmap.File)
