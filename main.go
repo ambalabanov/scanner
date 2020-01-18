@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,6 +17,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 var (
@@ -52,6 +55,7 @@ type document struct {
 	Status int         `bson:"status"`
 	Header http.Header `bson:"header"`
 	Body   string      `bson:"body"`
+	Links  []string    `bson:"links"`
 }
 type documents []document
 
@@ -75,7 +79,6 @@ func init() {
 		}
 		fmt.Println("OK!")
 	}
-
 	fmt.Print("Load hosts...")
 	if err := hosts.Load(&config); err != nil {
 		log.Fatal(err)
@@ -112,7 +115,7 @@ func main() {
 	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Body)
+	fmt.Println(result.Links)
 
 }
 
@@ -173,7 +176,10 @@ func (d document) Scan() error {
 	if err != nil {
 		return err
 	}
-	body, _ := ioutil.ReadAll(r.Body)
+	b := r.Body
+	defer b.Close()
+	links := parseBody(b, "href")
+	body, _ := ioutil.ReadAll(b)
 	d.URL = url
 	d.Method = r.Request.Method
 	d.Scheme = r.Request.URL.Scheme
@@ -181,11 +187,31 @@ func (d document) Scan() error {
 	d.Status = r.StatusCode
 	d.Header = r.Header
 	d.Body = string(body)
-
+	d.Links = links
 	if err := d.Write(collection); err != nil {
 		return err
 	}
 	return nil
+}
+func parseBody(b io.ReadCloser, k string) []string {
+	var links []string
+	doc := html.NewTokenizer(b)
+	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
+		token := doc.Token()
+		if tokenType == html.StartTagToken {
+			if token.DataAtom != atom.A {
+				tokenType = doc.Next()
+				continue
+			}
+			for _, attr := range token.Attr {
+				if attr.Key == k {
+					links = append(links, attr.Val)
+				}
+			}
+		}
+		tokenType = doc.Next()
+	}
+	return links
 }
 
 func (d *document) Write(c *mongo.Collection) error {
