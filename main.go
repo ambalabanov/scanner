@@ -37,9 +37,10 @@ type host struct {
 	Ports []int  `json:"ports"`
 }
 type database struct {
-	URI  string `json:"uri"`
-	Db   string `json:"db"`
-	Coll string `json:"coll"`
+	URI   string `json:"uri"`
+	Db    string `json:"db"`
+	Coll  string `json:"coll"`
+	Empty bool   `json:"empty"`
 }
 type document struct {
 	Name   string      `bson:"name"`
@@ -67,11 +68,14 @@ func init() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Print("Drop collection...")
-	if err := dbDrop(collection); err != nil {
-		log.Fatal(err)
+	if config.Db.Empty {
+		fmt.Print("Drop collection...")
+		if err := dbDrop(collection); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("OK!")
 	}
-	fmt.Println("OK!")
+
 	fmt.Print("Load hosts...")
 	if err := hosts.Load(&config); err != nil {
 		log.Fatal(err)

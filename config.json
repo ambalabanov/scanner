@@ -2,7 +2,8 @@
     "database" : {
         "uri"  : "mongodb://localhost:27017",
         "db"   : "scannerDb",
-        "coll" : "scannerCol"
+        "coll" : "scannerCol",
+        "empty" : true
     },
     "nmap" : {
         "use" : false,
