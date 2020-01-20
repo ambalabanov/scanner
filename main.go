@@ -89,12 +89,12 @@ func init() {
 func main() {
 	fmt.Print("Init scan...")
 	for _, host := range hosts {
+		wg.Add(1)
 		go host.Scan()
 	}
 	fmt.Println("OK!")
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	fmt.Print("Complete scan...")
-	time.Sleep(1 * time.Second)
 	wg.Wait()
 	fmt.Println("OK!")
 	fmt.Print("Retrive data from database...")
@@ -106,9 +106,9 @@ func main() {
 	fmt.Println("OK!")
 	fmt.Print("Parse URL's...")
 	for _, r := range results {
+		wg.Add(1)
 		go r.Parse()
 	}
-	time.Sleep(1 * time.Second)
 	wg.Wait()
 	fmt.Println("OK!")
 	fmt.Println("Print ONE document")
@@ -168,7 +168,6 @@ func (d *documents) Load(config *configuration) error {
 }
 
 func (d document) Scan() error {
-	wg.Add(1)
 	defer wg.Done()
 	url := fmt.Sprintf("%s://%s:%d", d.Scheme, d.Name, d.Port)
 	client := http.Client{
@@ -190,7 +189,6 @@ func (d document) Scan() error {
 	return nil
 }
 func (d document) Parse() error {
-	wg.Add(1)
 	defer wg.Done()
 	var links []string
 	client := http.Client{
