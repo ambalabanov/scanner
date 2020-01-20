@@ -117,7 +117,6 @@ func main() {
 	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Body)
 	fmt.Println(result.Links)
 
 }
@@ -219,12 +218,10 @@ func (d document) Parse() error {
 						links = append(links, attr.Val)
 					}
 				}
-			default:
-				tokenType = doc.Next()
-				continue
 			}
 		}
 		tokenType = doc.Next()
+		continue
 	}
 	d.Links = links
 	if err := d.Write(collection); err != nil {
