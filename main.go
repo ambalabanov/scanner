@@ -54,7 +54,7 @@ type document struct {
 	Host   string      `bson:"host"`
 	Status int         `bson:"status"`
 	Header http.Header `bson:"header"`
-	Body   string      `bson:"body"`
+	Body   []byte      `bson:"body"`
 	Links  []string    `bson:"links"`
 }
 type documents []document
@@ -113,7 +113,7 @@ func main() {
 	fmt.Println("OK!")
 	fmt.Println("Print ONE document")
 	var result document
-	filter = bson.M{"name": "scanme.nmap.org", "port": bson.M{"$eq": 80}, "body": bson.M{"$ne": ""}}
+	filter = bson.M{"name": "scanme.nmap.org", "port": bson.M{"$eq": 80}, "body": bson.M{"$ne": nil}}
 	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
@@ -205,21 +205,23 @@ func (d document) Parse() error {
 	if err != nil {
 		return err
 	}
-	d.Body = string(body)
+	d.Body = body
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	doc := html.NewTokenizer(r.Body)
 	defer r.Body.Close()
 	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
 		token := doc.Token()
 		if tokenType == html.StartTagToken {
-			if token.DataAtom != atom.A {
+			switch token.DataAtom {
+			case atom.A:
+				for _, attr := range token.Attr {
+					if attr.Key == "href" {
+						links = append(links, attr.Val)
+					}
+				}
+			default:
 				tokenType = doc.Next()
 				continue
-			}
-			for _, attr := range token.Attr {
-				if attr.Key == "href" {
-					links = append(links, attr.Val)
-				}
 			}
 		}
 		tokenType = doc.Next()
