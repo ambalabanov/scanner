@@ -56,6 +56,7 @@ type document struct {
 	Header http.Header `bson:"header"`
 	Body   []byte      `bson:"body"`
 	Links  []string    `bson:"links"`
+	Title  string      `bson:"title"`
 }
 type documents []document
 
@@ -106,7 +107,7 @@ func main() {
 	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Links)
+	fmt.Println(result.Title)
 
 }
 
@@ -210,10 +211,8 @@ func (d document) Parse() error {
 		return err
 	}
 	d.Body = body
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-	defer r.Body.Close()
-	links := parseLinks(r.Body)
-	d.Links = links
+	d.Links = parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
+	d.Title = parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
 	if err := d.Write(collection); err != nil {
 		return err
 	}
@@ -238,6 +237,28 @@ func parseLinks(b io.Reader) []string {
 		continue
 	}
 	return links
+}
+
+func parseTitle(b io.Reader) string {
+	var title string
+	tokenizer := html.NewTokenizer(b)
+	for {
+		tokenType := tokenizer.Next()
+		if tokenType == html.ErrorToken {
+			break
+		}
+		if tokenType == html.StartTagToken {
+			token := tokenizer.Token()
+			if "title" == token.Data {
+				tokenType = tokenizer.Next()
+				if tokenType == html.TextToken {
+					title = tokenizer.Token().Data
+					break
+				}
+			}
+		}
+	}
+	return title
 }
 
 func (d *document) Write(c *mongo.Collection) error {
