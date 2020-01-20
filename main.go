@@ -108,6 +108,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println(result.Title)
+	fmt.Println(result.Links)
 
 }
 
@@ -221,9 +222,9 @@ func (d document) Parse() error {
 
 func parseLinks(b io.Reader) []string {
 	var links []string
-	doc := html.NewTokenizer(b)
-	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
-		token := doc.Token()
+	tokenizer := html.NewTokenizer(b)
+	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
+		token := tokenizer.Token()
 		if tokenType == html.StartTagToken {
 			if token.DataAtom == atom.A {
 				for _, attr := range token.Attr {
@@ -233,8 +234,7 @@ func parseLinks(b io.Reader) []string {
 				}
 			}
 		}
-		tokenType = doc.Next()
-		continue
+		tokenType = tokenizer.Next()
 	}
 	return links
 }
@@ -242,14 +242,10 @@ func parseLinks(b io.Reader) []string {
 func parseTitle(b io.Reader) string {
 	var title string
 	tokenizer := html.NewTokenizer(b)
-	for {
-		tokenType := tokenizer.Next()
-		if tokenType == html.ErrorToken {
-			break
-		}
+	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
+		token := tokenizer.Token()
 		if tokenType == html.StartTagToken {
-			token := tokenizer.Token()
-			if "title" == token.Data {
+			if token.Data == "title" {
 				tokenType = tokenizer.Next()
 				if tokenType == html.TextToken {
 					title = tokenizer.Token().Data
@@ -257,6 +253,7 @@ func parseTitle(b io.Reader) string {
 				}
 			}
 		}
+		tokenType = tokenizer.Next()
 	}
 	return title
 }
