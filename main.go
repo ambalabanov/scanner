@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"runtime"
 	"sync"
 	"time"
 
@@ -88,12 +87,8 @@ func init() {
 }
 
 func main() {
-	fmt.Print("Init scan...")
+	fmt.Print("Scan...")
 	hosts.Scan()
-	fmt.Println("OK!")
-	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
-	fmt.Print("Complete scan...")
-	wg.Wait()
 	fmt.Println("OK!")
 	fmt.Print("Retrive data from database...")
 	filter := bson.M{"status": bson.M{"$ne": ""}}
@@ -104,7 +99,6 @@ func main() {
 	fmt.Println("OK!")
 	fmt.Print("Parse URL's...")
 	results.Parse()
-	wg.Wait()
 	fmt.Println("OK!")
 	fmt.Println("Print ONE document")
 	var result document
@@ -189,6 +183,7 @@ func (d documents) Scan() error {
 		wg.Add(1)
 		go doc.Scan()
 	}
+	wg.Wait()
 	return nil
 }
 
@@ -197,6 +192,7 @@ func (d documents) Parse() error {
 		wg.Add(1)
 		go doc.Parse()
 	}
+	wg.Wait()
 	return nil
 }
 
