@@ -88,10 +88,7 @@ func init() {
 
 func main() {
 	fmt.Print("Init scan...")
-	for _, host := range hosts {
-		wg.Add(1)
-		go host.Scan()
-	}
+	hosts.Scan()
 	fmt.Println("OK!")
 	fmt.Printf("Active gorutines %v\n", runtime.NumGoroutine())
 	fmt.Print("Complete scan...")
@@ -105,10 +102,7 @@ func main() {
 	}
 	fmt.Println("OK!")
 	fmt.Print("Parse URL's...")
-	for _, r := range results {
-		wg.Add(1)
-		go r.Parse()
-	}
+	results.Parse()
 	wg.Wait()
 	fmt.Println("OK!")
 	fmt.Println("Print ONE document")
@@ -188,6 +182,23 @@ func (d document) Scan() error {
 	}
 	return nil
 }
+
+func (d documents) Scan() error {
+	for _, doc := range d {
+		wg.Add(1)
+		go doc.Scan()
+	}
+	return nil
+}
+
+func (d documents) Parse() error {
+	for _, doc := range d {
+		wg.Add(1)
+		go doc.Parse()
+	}
+	return nil
+}
+
 func (d document) Parse() error {
 	defer wg.Done()
 	var links []string
