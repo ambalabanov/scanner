@@ -91,24 +91,28 @@ func main() {
 	fmt.Print("Scan...")
 	hosts.Scan()
 	fmt.Println("OK!")
-	fmt.Print("Retrive data from database...")
-	filter := bson.M{"status": bson.M{"$ne": ""}}
+	fmt.Print("Retrive scan results...")
+	filter := bson.M{}
 	var results documents
 	if err := results.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Print("Parse URL's...")
+	fmt.Print("Parse body...")
 	results.Parse()
 	fmt.Println("OK!")
-	fmt.Println("Print ONE document")
-	var result document
-	filter = bson.M{"name": "scanme.nmap.org", "port": bson.M{"$eq": 80}, "body": bson.M{"$ne": nil}}
-	if err := result.Read(collection, filter); err != nil {
+	fmt.Print("Results: ")
+	results = documents{}
+	filter = bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
+	if err := results.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result.Title)
-	fmt.Println(result.Links)
+	fmt.Println(len(results))
+	for _, res := range results {
+		fmt.Println(res.Method, res.URL, http.StatusText(res.Status))
+		fmt.Println(res.Title)
+		fmt.Println(res.Links)
+	}
 
 }
 
@@ -214,6 +218,7 @@ func (d document) Parse() error {
 	d.Body = body
 	d.Links = parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.Title = parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
+	d.Method = r.Request.Method
 	if err := d.Write(collection); err != nil {
 		return err
 	}
