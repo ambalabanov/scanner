@@ -111,9 +111,10 @@ func main() {
 	for _, res := range results {
 		fmt.Println(res.Method, res.URL, http.StatusText(res.Status))
 		fmt.Println(res.Title)
-		fmt.Println(res.Links)
+		for _, l := range res.Links {
+			fmt.Println(l)
+		}
 	}
-
 }
 
 func (c *configuration) Load(filename string) error {
