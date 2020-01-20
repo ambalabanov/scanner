@@ -226,8 +226,7 @@ func parseLinks(b io.Reader) []string {
 	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
 		token := doc.Token()
 		if tokenType == html.StartTagToken {
-			switch token.DataAtom {
-			case atom.A:
+			if token.DataAtom == atom.A {
 				for _, attr := range token.Attr {
 					if attr.Key == "href" {
 						links = append(links, attr.Val)
