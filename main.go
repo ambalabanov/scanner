@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -104,17 +104,20 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Println("Print ALL documents")
-	fmt.Println("Count ", len(results))
+	fmt.Print("Parse URL's...")
 	for _, r := range results {
-		fmt.Println(r.Method, r.Scheme, r.Host, http.StatusText(r.Status), r.Header.Get("Content-Type"))
+		go r.Parse()
 	}
+	time.Sleep(1 * time.Second)
+	wg.Wait()
+	fmt.Println("OK!")
 	fmt.Println("Print ONE document")
 	var result document
-	filter = bson.M{"name": "scanme.nmap.org", "port": bson.M{"$eq": 80}}
+	filter = bson.M{"name": "scanme.nmap.org", "port": bson.M{"$eq": 80}, "body": bson.M{"$ne": ""}}
 	if err := result.Read(collection, filter); err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println(result.Body)
 	fmt.Println(result.Links)
 
 }
@@ -172,30 +175,40 @@ func (d document) Scan() error {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
-	r, err := client.Get(url)
+	r, err := client.Head(url)
 	if err != nil {
 		return err
 	}
-	b := r.Body
-	defer b.Close()
-	links := parseBody(b, "href")
-	body, _ := ioutil.ReadAll(b)
 	d.URL = url
 	d.Method = r.Request.Method
 	d.Scheme = r.Request.URL.Scheme
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
 	d.Header = r.Header
-	d.Body = string(body)
-	d.Links = links
 	if err := d.Write(collection); err != nil {
 		return err
 	}
 	return nil
 }
-func parseBody(b io.ReadCloser, k string) []string {
+func (d document) Parse() error {
+	wg.Add(1)
+	defer wg.Done()
 	var links []string
-	doc := html.NewTokenizer(b)
+	client := http.Client{
+		Timeout: 5 * time.Second,
+	}
+	r, err := client.Get(d.URL)
+	if err != nil {
+		return err
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	d.Body = string(body)
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	doc := html.NewTokenizer(r.Body)
+	defer r.Body.Close()
 	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
 		token := doc.Token()
 		if tokenType == html.StartTagToken {
@@ -204,14 +217,18 @@ func parseBody(b io.ReadCloser, k string) []string {
 				continue
 			}
 			for _, attr := range token.Attr {
-				if attr.Key == k {
+				if attr.Key == "href" {
 					links = append(links, attr.Val)
 				}
 			}
 		}
 		tokenType = doc.Next()
 	}
-	return links
+	d.Links = links
+	if err := d.Write(collection); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *document) Write(c *mongo.Collection) error {
