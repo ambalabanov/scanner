@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -201,7 +202,6 @@ func (d documents) Parse() error {
 
 func (d document) Parse() error {
 	defer wg.Done()
-	var links []string
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -215,8 +215,18 @@ func (d document) Parse() error {
 	}
 	d.Body = body
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-	doc := html.NewTokenizer(r.Body)
 	defer r.Body.Close()
+	links := parseLinks(r.Body)
+	d.Links = links
+	if err := d.Write(collection); err != nil {
+		return err
+	}
+	return nil
+}
+
+func parseLinks(b io.Reader) []string {
+	var links []string
+	doc := html.NewTokenizer(b)
 	for tokenType := doc.Next(); tokenType != html.ErrorToken; {
 		token := doc.Token()
 		if tokenType == html.StartTagToken {
@@ -232,11 +242,7 @@ func (d document) Parse() error {
 		tokenType = doc.Next()
 		continue
 	}
-	d.Links = links
-	if err := d.Write(collection); err != nil {
-		return err
-	}
-	return nil
+	return links
 }
 
 func (d *document) Write(c *mongo.Collection) error {
