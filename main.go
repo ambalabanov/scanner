@@ -218,8 +218,8 @@ func (d document) Parse() error {
 		return err
 	}
 	d.Body = body
-	d.Links = parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
-	d.Title = parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
+	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
+	d.parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.Method = r.Request.Method
 	if err := d.Write(db.collection); err != nil {
 		return err
@@ -227,7 +227,7 @@ func (d document) Parse() error {
 	return nil
 }
 
-func parseLinks(b io.Reader) []string {
+func (d *document) parseLinks(b io.Reader) {
 	var links []string
 	tokenizer := html.NewTokenizer(b)
 	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
@@ -243,11 +243,10 @@ func parseLinks(b io.Reader) []string {
 		}
 		tokenType = tokenizer.Next()
 	}
-	return links
+	d.Links = links
 }
 
-func parseTitle(b io.Reader) string {
-	var title string
+func (d *document) parseTitle(b io.Reader) {
 	tokenizer := html.NewTokenizer(b)
 	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
 		token := tokenizer.Token()
@@ -255,14 +254,13 @@ func parseTitle(b io.Reader) string {
 			if token.DataAtom == atom.Title {
 				tokenType = tokenizer.Next()
 				if tokenType == html.TextToken {
-					title = tokenizer.Token().Data
+					d.Title = tokenizer.Token().Data
 					break
 				}
 			}
 		}
 		tokenType = tokenizer.Next()
 	}
-	return title
 }
 
 func (d *document) Write(c *mongo.Collection) error {
