@@ -252,7 +252,7 @@ func parseTitle(b io.Reader) string {
 	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
 		token := tokenizer.Token()
 		if tokenType == html.StartTagToken {
-			if token.Data == "title" {
+			if token.DataAtom == atom.Title {
 				tokenType = tokenizer.Next()
 				if tokenType == html.TextToken {
 					title = tokenizer.Token().Data
