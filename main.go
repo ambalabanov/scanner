@@ -109,7 +109,7 @@ func main() {
 	}
 	fmt.Println(len(results))
 	for _, res := range results {
-		fmt.Println(res.Method, res.URL, http.StatusText(res.Status))
+		fmt.Println(res.Method, res.URL, http.StatusText(res.Status), res.Header.Get("server"))
 		fmt.Println(res.Title)
 		for _, l := range res.Links {
 			fmt.Println(l)
