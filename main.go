@@ -186,8 +186,8 @@ func (d document) Scan() error {
 	return nil
 }
 
-func (d documents) Scan() error {
-	for _, doc := range d {
+func (d *documents) Scan() error {
+	for _, doc := range *d {
 		wg.Add(1)
 		go doc.Scan()
 	}
@@ -195,8 +195,8 @@ func (d documents) Scan() error {
 	return nil
 }
 
-func (d documents) Parse() error {
-	for _, doc := range d {
+func (d *documents) Parse() error {
+	for _, doc := range *d {
 		wg.Add(1)
 		go doc.Parse()
 	}
