@@ -22,9 +22,9 @@ import (
 )
 
 var (
-	wg         sync.WaitGroup
-	collection *mongo.Collection
-	hosts      documents
+	wg    sync.WaitGroup
+	db    database
+	hosts documents
 )
 
 type configuration struct {
@@ -40,10 +40,11 @@ type host struct {
 	Ports []int  `json:"ports"`
 }
 type database struct {
-	URI   string `json:"uri"`
-	Db    string `json:"db"`
-	Coll  string `json:"coll"`
-	Empty bool   `json:"empty"`
+	URI        string `json:"uri"`
+	Db         string `json:"db"`
+	Coll       string `json:"coll"`
+	Empty      bool   `json:"empty"`
+	collection *mongo.Collection
 }
 type document struct {
 	Name   string      `bson:"name"`
@@ -68,14 +69,14 @@ func init() {
 	}
 	fmt.Println("OK!")
 	fmt.Print("Connect to mongodb...")
-	var err error
-	if collection, err = dbConnect(config.Db); err != nil {
+	db = config.Db
+	if err := db.connect(); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
 	if config.Db.Empty {
 		fmt.Print("Drop collection...")
-		if err := dbDrop(collection); err != nil {
+		if err := db.drop(); err != nil {
 			log.Fatal(err)
 		}
 		fmt.Println("OK!")
@@ -94,7 +95,7 @@ func main() {
 	fmt.Print("Retrive scan results...")
 	filter := bson.M{}
 	var results documents
-	if err := results.Read(collection, filter); err != nil {
+	if err := results.Read(db.collection, filter); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
@@ -104,7 +105,7 @@ func main() {
 	fmt.Print("Results: ")
 	results = documents{}
 	filter = bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
-	if err := results.Read(collection, filter); err != nil {
+	if err := results.Read(db.collection, filter); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(len(results))
@@ -179,7 +180,7 @@ func (d document) Scan() error {
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
 	d.Header = r.Header
-	if err := d.Write(collection); err != nil {
+	if err := d.Write(db.collection); err != nil {
 		return err
 	}
 	return nil
@@ -220,7 +221,7 @@ func (d document) Parse() error {
 	d.Links = parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.Title = parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.Method = r.Request.Method
-	if err := d.Write(collection); err != nil {
+	if err := d.Write(db.collection); err != nil {
 		return err
 	}
 	return nil
@@ -309,24 +310,25 @@ func (d *documents) Read(c *mongo.Collection, f bson.M) error {
 	return nil
 }
 
-func dbDelete(c *mongo.Collection, filter bson.M) error {
-	if _, err := c.DeleteMany(context.TODO(), filter); err != nil {
+func (d *database) delete(filter bson.M) error {
+	if _, err := d.collection.DeleteMany(context.TODO(), filter); err != nil {
 		return err
 	}
 	return nil
 }
 
-func dbDrop(c *mongo.Collection) error {
-	if err := c.Drop(context.TODO()); err != nil {
+func (d *database) drop() error {
+	if err := d.collection.Drop(context.TODO()); err != nil {
 		return err
 	}
 	return nil
 }
 
-func dbConnect(d database) (*mongo.Collection, error) {
+func (d *database) connect() error {
 	client, _ := mongo.Connect(context.TODO(), options.Client().ApplyURI(d.URI))
 	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		return nil, err
+		return err
 	}
-	return client.Database(d.Db).Collection(d.Coll), nil
+	d.collection = client.Database(d.Db).Collection(d.Coll)
+	return nil
 }
