@@ -22,9 +22,8 @@ import (
 )
 
 var (
-	wg    sync.WaitGroup
-	db    database
-	hosts documents
+	wg sync.WaitGroup
+	db database
 )
 
 type configuration struct {
@@ -61,7 +60,7 @@ type document struct {
 }
 type documents []document
 
-func init() {
+func main() {
 	fmt.Print("Load config.json...")
 	var config configuration
 	if err := config.Load("config.json"); err != nil {
@@ -82,14 +81,12 @@ func init() {
 		fmt.Println("OK!")
 	}
 	fmt.Print("Load hosts...")
+	var hosts documents
 	if err := hosts.Load(&config); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-}
-
-func main() {
-	fmt.Print("Scan...")
+	fmt.Print("Scan hosts...")
 	hosts.Scan()
 	fmt.Println("OK!")
 	fmt.Print("Retrive scan results...")
