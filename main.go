@@ -89,30 +89,23 @@ func main() {
 	fmt.Print("Scan hosts...")
 	hosts.Scan()
 	fmt.Println("OK!")
-	fmt.Print("Retrive scan results...")
+	fmt.Print("Parse body...")
 	filter := bson.M{}
 	var results documents
 	if err := results.Read(db.collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("OK!")
-	fmt.Print("Parse body...")
 	results.Parse()
 	fmt.Println("OK!")
-	fmt.Print("Results: ")
+	fmt.Print("Print results...")
 	results = documents{}
 	filter = bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
 	if err := results.Read(db.collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(len(results))
-	for _, res := range results {
-		fmt.Println(res.Method, res.URL, http.StatusText(res.Status), res.Header.Get("server"))
-		fmt.Println(res.Title)
-		for _, l := range res.Links {
-			fmt.Println(l)
-		}
-	}
+	fmt.Println("OK!")
+	results.Print()
+
 }
 
 func (c *configuration) Load(filename string) error {
@@ -190,6 +183,17 @@ func (d *documents) Scan() error {
 	}
 	wg.Wait()
 	return nil
+}
+
+func (d *documents) Print() {
+	fmt.Println("Count:", len(*d))
+	for _, res := range *d {
+		fmt.Println(res.Method, res.URL, http.StatusText(res.Status), res.Header.Get("server"))
+		fmt.Println(res.Title)
+		for _, l := range res.Links {
+			fmt.Println(l)
+		}
+	}
 }
 
 func (d *documents) Parse() error {
