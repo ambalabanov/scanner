@@ -21,11 +21,6 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-var (
-	wg sync.WaitGroup
-	db database
-)
-
 type configuration struct {
 	Db    database `json:"database"`
 	Hosts []host   `json:"hosts"`
@@ -68,7 +63,7 @@ func main() {
 	}
 	fmt.Println("OK!")
 	fmt.Print("Connect to mongodb...")
-	db = config.Db
+	db := config.Db
 	if err := db.connect(); err != nil {
 		log.Fatal(err)
 	}
@@ -93,14 +88,13 @@ func main() {
 	hosts.Parse()
 	fmt.Println("OK!")
 	fmt.Print("Print results...")
-	results := documents{}
-	filter := bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
-	if err := results.Read(db.collection, filter); err != nil {
+	fmt.Println("OK!")
+	hosts.Print()
+	fmt.Print("Write to database...")
+	if err := hosts.Write(db.collection); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	results.Print()
-
 }
 
 func (c *configuration) Load(filename string) error {
@@ -149,7 +143,7 @@ func (d *documents) Load(config *configuration) error {
 	return nil
 }
 
-func (d document) Scan(res chan document) error {
+func (d document) Scan(res chan document, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	url := fmt.Sprintf("%s://%s:%d", d.Scheme, d.Name, d.Port)
 	client := http.Client{
@@ -170,15 +164,17 @@ func (d document) Scan(res chan document) error {
 }
 
 func (d *documents) Scan() error {
+	var wg sync.WaitGroup
 	var dd documents
 	res := make(chan document, len(*d))
 	for _, doc := range *d {
 		wg.Add(1)
-		go doc.Scan(res)
+		go doc.Scan(res, &wg)
 
 	}
 	wg.Wait()
-	for i := 0; i < len(res); i++ {
+	l := len(res)
+	for i := 0; i < l; i++ {
 		dd = append(dd, <-res)
 	}
 	*d = dd
@@ -197,15 +193,23 @@ func (d *documents) Print() {
 }
 
 func (d *documents) Parse() error {
+	var wg sync.WaitGroup
+	var dd documents
+	res := make(chan document, len(*d))
 	for _, doc := range *d {
 		wg.Add(1)
-		go doc.Parse()
+		go doc.Parse(res, &wg)
 	}
 	wg.Wait()
+	l := len(res)
+	for i := 0; i < l; i++ {
+		dd = append(dd, <-res)
+	}
+	*d = dd
 	return nil
 }
 
-func (d document) Parse() error {
+func (d document) Parse(res chan document, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	client := http.Client{
 		Timeout: 5 * time.Second,
@@ -222,9 +226,7 @@ func (d document) Parse() error {
 	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.Method = r.Request.Method
-	if err := d.Write(db.collection); err != nil {
-		return err
-	}
+	res <- d
 	return nil
 }
 
