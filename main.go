@@ -90,16 +90,11 @@ func main() {
 	hosts.Scan()
 	fmt.Println("OK!")
 	fmt.Print("Parse body...")
-	filter := bson.M{}
-	var results documents
-	if err := results.Read(db.collection, filter); err != nil {
-		log.Fatal(err)
-	}
-	results.Parse()
+	hosts.Parse()
 	fmt.Println("OK!")
 	fmt.Print("Print results...")
-	results = documents{}
-	filter = bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
+	results := documents{}
+	filter := bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
 	if err := results.Read(db.collection, filter); err != nil {
 		log.Fatal(err)
 	}
@@ -154,7 +149,7 @@ func (d *documents) Load(config *configuration) error {
 	return nil
 }
 
-func (d document) Scan() error {
+func (d document) Scan(res chan document) error {
 	defer wg.Done()
 	url := fmt.Sprintf("%s://%s:%d", d.Scheme, d.Name, d.Port)
 	client := http.Client{
@@ -170,18 +165,23 @@ func (d document) Scan() error {
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
 	d.Header = r.Header
-	if err := d.Write(db.collection); err != nil {
-		return err
-	}
+	res <- d
 	return nil
 }
 
 func (d *documents) Scan() error {
+	var dd documents
+	res := make(chan document, len(*d))
 	for _, doc := range *d {
 		wg.Add(1)
-		go doc.Scan()
+		go doc.Scan(res)
+
 	}
 	wg.Wait()
+	for i := 0; i < len(res); i++ {
+		dd = append(dd, <-res)
+	}
+	*d = dd
 	return nil
 }
 
