@@ -173,8 +173,7 @@ func (d *documents) Scan() error {
 
 	}
 	wg.Wait()
-	l := len(res)
-	for i := 0; i < l; i++ {
+	for i, l := 0, len(res); i < l; i++ {
 		dd = append(dd, <-res)
 	}
 	*d = dd
@@ -201,8 +200,7 @@ func (d *documents) Parse() error {
 		go doc.Parse(res, &wg)
 	}
 	wg.Wait()
-	l := len(res)
-	for i := 0; i < l; i++ {
+	for i, l := 0, len(res); i < l; i++ {
 		dd = append(dd, <-res)
 	}
 	*d = dd
