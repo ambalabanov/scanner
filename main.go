@@ -99,6 +99,11 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
+	fmt.Print("Write to file...")
+	if err := hosts.Save("output.json"); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OK!")
 	fmt.Print("Print results...")
 	fmt.Println("OK!")
 	hosts.Print()
@@ -146,6 +151,18 @@ func (d *documents) Load(config *configuration) error {
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func (d *documents) Save(filename string) error {
+	jsonDoc, err := json.Marshal(d)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(filename, jsonDoc, 0644)
+	if err != nil {
+		return err
 	}
 	return nil
 }
