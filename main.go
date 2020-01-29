@@ -34,6 +34,7 @@ type host struct {
 	Ports []int  `json:"ports"`
 }
 type database struct {
+	Use        bool   `json:"use"`
 	URI        string `json:"uri"`
 	Db         string `json:"db"`
 	Coll       string `json:"coll"`
@@ -62,19 +63,6 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Print("Connect to mongodb...")
-	db := config.Db
-	if err := db.connect(); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("OK!")
-	if config.Db.Empty {
-		fmt.Print("Drop collection...")
-		if err := db.drop(); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("OK!")
-	}
 	fmt.Print("Load hosts...")
 	var hosts documents
 	if err := hosts.Load(&config); err != nil {
@@ -87,16 +75,31 @@ func main() {
 	fmt.Print("Parse body...")
 	hosts.Parse()
 	fmt.Println("OK!")
-	fmt.Print("Write to database...")
-	if err := hosts.Write(db.collection); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("OK!")
-	fmt.Print("Read from database...")
-	hosts = documents{}
-	filter := bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
-	if err := hosts.Read(db.collection, filter); err != nil {
-		log.Fatal(err)
+	if config.Db.Use {
+		fmt.Print("Connect to mongodb...")
+		db := config.Db
+		if err := db.connect(); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("OK!")
+		if config.Db.Empty {
+			fmt.Print("Drop collection...")
+			if err := db.drop(); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println("OK!")
+		}
+		fmt.Print("Write to database...")
+		if err := hosts.Write(db.collection); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("OK!")
+		fmt.Print("Read from database...")
+		hosts = documents{}
+		filter := bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
+		if err := hosts.Read(db.collection, filter); err != nil {
+			log.Fatal(err)
+		}
 	}
 	fmt.Println("OK!")
 	fmt.Print("Write to file...")

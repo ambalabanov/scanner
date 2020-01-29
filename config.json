@@ -1,5 +1,6 @@
 {
     "database" : {
+        "use" : true,
         "uri"  : "mongodb://localhost:27017",
         "db"   : "scannerDb",
         "coll" : "scannerCol",
