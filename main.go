@@ -87,14 +87,21 @@ func main() {
 	fmt.Print("Parse body...")
 	hosts.Parse()
 	fmt.Println("OK!")
-	fmt.Print("Print results...")
-	fmt.Println("OK!")
-	hosts.Print()
 	fmt.Print("Write to database...")
 	if err := hosts.Write(db.collection); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
+	fmt.Print("Read from database...")
+	hosts = documents{}
+	filter := bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
+	if err := hosts.Read(db.collection, filter); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("OK!")
+	fmt.Print("Print results...")
+	fmt.Println("OK!")
+	hosts.Print()
 }
 
 func (c *configuration) Load(filename string) error {
@@ -170,7 +177,6 @@ func (d *documents) Scan() error {
 	for _, doc := range *d {
 		wg.Add(1)
 		go doc.Scan(res, &wg)
-
 	}
 	wg.Wait()
 	for i, l := 0, len(res); i < l; i++ {
