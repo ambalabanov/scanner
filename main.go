@@ -172,11 +172,11 @@ func (d *documents) Save(filename string) error {
 func (d *documents) Handler() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		res, err := json.MarshalIndent(d, "", "  ")
-		if err != nil {
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(d); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Fprint(w, string(res))
 	})
 	log.Fatal(http.ListenAndServe(":8081", nil))
 }
