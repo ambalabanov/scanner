@@ -42,17 +42,17 @@ type database struct {
 	collection *mongo.Collection
 }
 type document struct {
-	Name   string      `bson:"name"`
-	Port   int         `bson:"port"`
-	URL    string      `bson:"url"`
-	Method string      `bson:"method"`
-	Scheme string      `bson:"scheme"`
-	Host   string      `bson:"host"`
-	Status int         `bson:"status"`
-	Header http.Header `bson:"header"`
-	Body   []byte      `bson:"body"`
-	Links  []string    `bson:"links"`
-	Title  string      `bson:"title"`
+	Name   string      `bson:"name"   json:"name"`
+	Port   int         `bson:"port"   json:"port"`
+	URL    string      `bson:"url"    json:"url"`
+	Method string      `bson:"method" json:"method"`
+	Scheme string      `bson:"scheme" json:"scheme"`
+	Host   string      `bson:"host"   json:"host"`
+	Status int         `bson:"status" json:"status"`
+	Header http.Header `bson:"header" json:"-"`
+	Body   []byte      `bson:"body"   json:"-"`
+	Links  []string    `bson:"links"  json:"links"`
+	Title  string      `bson:"title"  json:"title"`
 }
 type documents []document
 
@@ -100,8 +100,8 @@ func main() {
 		if err := hosts.Read(db.collection, filter); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println("OK!")
 	}
-	fmt.Println("OK!")
 	fmt.Print("Write to file...")
 	if err := hosts.Save("output.json"); err != nil {
 		log.Fatal(err)
@@ -172,7 +172,7 @@ func (d *documents) Save(filename string) error {
 func (d *documents) Handler() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		res, err := json.Marshal(d)
+		res, err := json.MarshalIndent(d, "", "  ")
 		if err != nil {
 			log.Fatal(err)
 		}
