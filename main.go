@@ -22,9 +22,11 @@ import (
 )
 
 type configuration struct {
-	Db    database `json:"database"`
-	Hosts []host   `json:"hosts"`
-	Nmap  struct {
+	Server struct {
+		Port int `json:"port"`
+	} `json:"server"`
+	Db   database `json:"database"`
+	Nmap struct {
 		Use  bool   `json:"use"`
 		File string `json:"file"`
 	} `json:"nmap"`
@@ -57,58 +59,71 @@ type document struct {
 type documents []document
 
 func main() {
-	fmt.Print("Load config.json...")
+	log.Println("Load config")
 	var config configuration
 	if err := config.Load("config.json"); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("OK!")
-	fmt.Print("Load hosts...")
-	var hosts documents
-	if err := hosts.Load(&config); err != nil {
+	log.Println("Connect to mongodb")
+	db := config.Db
+	if err := db.connect(); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("OK!")
-	fmt.Print("Scan hosts...")
-	hosts.Scan()
-	fmt.Println("OK!")
-	fmt.Print("Parse body...")
-	hosts.Parse()
-	fmt.Println("OK!")
-	if config.Db.Use {
-		fmt.Print("Connect to mongodb...")
-		db := config.Db
-		if err := db.connect(); err != nil {
+	if config.Db.Empty {
+		log.Println("Drop collection")
+		if err := db.drop(); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("OK!")
-		if config.Db.Empty {
-			fmt.Print("Drop collection...")
-			if err := db.drop(); err != nil {
-				log.Fatal(err)
-			}
-			fmt.Println("OK!")
+	}
+	var hosts documents
+	log.Printf("Server starting on port %v...\n", config.Server.Port)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		var h []host
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&h); err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
 		}
-		fmt.Print("Write to database...")
+		log.Println("Load hosts")
+		hosts.Load(h)
+		log.Println("Scan hosts")
+		hosts.Scan()
+		log.Println("Parse body")
+		hosts.Parse()
+		w.Header().Set("Content-Type", "application/json")
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(&hosts); err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Write to database")
 		if err := hosts.Write(db.collection); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("OK!")
-		fmt.Print("Read from database...")
-		hosts = documents{}
-		filter := bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
-		if err := hosts.Read(db.collection, filter); err != nil {
-			log.Fatal(err)
+	})
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.Server.Port), nil))
+
+	// 	log.Println("Read from database...")
+	// 	hosts = documents{}
+	// 	filter := bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
+	// 	if err := hosts.Read(db.collection, filter); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+
+}
+
+func (d *documents) Load(h []host) {
+	for _, s := range []string{"http", "https"} {
+		for _, n := range h {
+			var doc document
+			for _, p := range n.Ports {
+				doc.Name = n.Name
+				doc.Port = p
+				doc.Scheme = s
+				*d = append(*d, doc)
+			}
 		}
-		fmt.Println("OK!")
 	}
-	fmt.Print("Write to file...")
-	if err := hosts.Save("output.json"); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("OK!")
-	fmt.Print("Server starting on port 8081...")
-	hosts.Handler()
 }
 
 func (c *configuration) Load(filename string) error {
@@ -122,63 +137,27 @@ func (c *configuration) Load(filename string) error {
 	return nil
 }
 
-func (d *documents) Load(config *configuration) error {
+func (d *documents) LoadNMAP(filename string) error {
 	for _, s := range []string{"http", "https"} {
-		if config.Nmap.Use {
-			bytes, err := ioutil.ReadFile(config.Nmap.File)
-			if err != nil {
-				return err
-			}
-			nmapXML, err := nmap.Parse(bytes)
-			if err != nil {
-				return err
-			}
-			for _, n := range nmapXML.Hosts {
-				var doc document
-				for _, p := range n.Ports {
-					doc.Name = string(n.Hostnames[0].Name)
-					doc.Port = int(p.PortId)
-					doc.Scheme = s
-					*d = append(*d, doc)
-				}
-			}
-		} else {
-			for _, n := range config.Hosts {
-				var doc document
-				for _, p := range n.Ports {
-					doc.Name = n.Name
-					doc.Port = p
-					doc.Scheme = s
-					*d = append(*d, doc)
-				}
+		bytes, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+		nmapXML, err := nmap.Parse(bytes)
+		if err != nil {
+			return err
+		}
+		for _, n := range nmapXML.Hosts {
+			var doc document
+			for _, p := range n.Ports {
+				doc.Name = string(n.Hostnames[0].Name)
+				doc.Port = int(p.PortId)
+				doc.Scheme = s
+				*d = append(*d, doc)
 			}
 		}
 	}
 	return nil
-}
-
-func (d *documents) Save(filename string) error {
-	jsonDoc, err := json.Marshal(d)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(filename, jsonDoc, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *documents) Handler() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(d); err != nil {
-			log.Fatal(err)
-		}
-	})
-	log.Fatal(http.ListenAndServe(":8081", nil))
 }
 
 func (d document) Scan(res chan document, wg *sync.WaitGroup) error {
@@ -215,17 +194,6 @@ func (d *documents) Scan() error {
 	}
 	*d = dd
 	return nil
-}
-
-func (d *documents) Print() {
-	fmt.Println("Count:", len(*d))
-	for _, res := range *d {
-		fmt.Println(res.Method, res.URL, http.StatusText(res.Status), res.Header.Get("server"))
-		fmt.Println(res.Title)
-		for _, l := range res.Links {
-			fmt.Println(l)
-		}
-	}
 }
 
 func (d *documents) Parse() error {
