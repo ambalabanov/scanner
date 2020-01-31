@@ -107,7 +107,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("OK!")
-	fmt.Print("Start web...")
+	fmt.Print("Server starting on port 8081...")
 	hosts.Handler()
 }
 
@@ -169,19 +169,14 @@ func (d *documents) Save(filename string) error {
 	return nil
 }
 
-func (d *documents) JSONDoc() ([]byte, error) {
-	jDoc, err := json.Marshal(d)
-	if err != nil {
-		return nil, err
-	}
-	return jDoc, nil
-}
-
 func (d *documents) Handler() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		body, _ := d.JSONDoc()
-		fmt.Fprint(w, string(body))
+		res, err := json.Marshal(d)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Fprint(w, string(res))
 	})
 	log.Fatal(http.ListenAndServe(":8081", nil))
 }
