@@ -71,7 +71,12 @@ func main() {
 	if err := db.connect(); err != nil {
 		log.Fatal(err)
 	}
-	var hosts documents
+	if config.Db.Empty {
+		log.Println("Drop collection")
+		if err := db.drop(); err != nil {
+			log.Fatal(err)
+		}
+	}
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var h []host
@@ -81,25 +86,22 @@ func main() {
 			return
 		}
 		log.Println("Load hosts")
+		hosts := documents{}
 		hosts.Load(h)
 		log.Println("Scan hosts")
 		hosts.Scan()
 		log.Println("Parse body")
 		hosts.Parse()
-		log.Println("Drop collection")
-		if err := db.drop(); err != nil {
-			log.Fatal(err)
-		}
 		log.Println("Write to database")
 		if err := hosts.Write(db.collection); err != nil {
 			log.Fatal(err)
 		}
-		log.Println("Read from database")
-		hosts = documents{}
-		filter := bson.M{}
-		if err := hosts.Read(db.collection, filter); err != nil {
-			log.Fatal(err)
-		}
+		// log.Println("Read from database")
+		// hosts = documents{}
+		// filter := bson.M{}
+		// if err := hosts.Read(db.collection, filter); err != nil {
+		// 	log.Fatal(err)
+		// }
 		w.Header().Set("Content-Type", "application/json")
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
@@ -119,6 +121,7 @@ func (d *documents) Load(h []host) {
 				doc.Name = n.Name
 				doc.Port = p
 				doc.Scheme = s
+				doc.ID = primitive.NewObjectID()
 				*d = append(*d, doc)
 			}
 		}
@@ -269,7 +272,7 @@ func (d *document) parseTitle(b io.Reader) {
 }
 
 func (d *document) Write(c *mongo.Collection) error {
-	d.ID = primitive.NewObjectID()
+
 	data, err := bson.Marshal(d)
 	if err != nil {
 		return err
