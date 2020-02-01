@@ -45,18 +45,20 @@ type database struct {
 	collection *mongo.Collection
 }
 type document struct {
-	ID     primitive.ObjectID `bson:"_id"    json:"id"`
-	Name   string             `bson:"name"   json:"name"`
-	Port   int                `bson:"port"   json:"port"`
-	URL    string             `bson:"url"    json:"url"`
-	Method string             `bson:"method" json:"method"`
-	Scheme string             `bson:"scheme" json:"scheme"`
-	Host   string             `bson:"host"   json:"host"`
-	Status int                `bson:"status" json:"status"`
-	Header http.Header        `bson:"header" json:"-"`
-	Body   []byte             `bson:"body"   json:"-"`
-	Links  []string           `bson:"links"  json:"links"`
-	Title  string             `bson:"title"  json:"title"`
+	ID        primitive.ObjectID `bson:"_id"        json:"id"`
+	CreatedAt time.Time          `bson:"created_at" json:"created_at,omitempty"`
+	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at,omitempty"`
+	Name      string             `bson:"name"       json:"name"`
+	Port      int                `bson:"port"       json:"port"`
+	URL       string             `bson:"url"        json:"url"`
+	Method    string             `bson:"method"     json:"method"`
+	Scheme    string             `bson:"scheme"     json:"scheme"`
+	Host      string             `bson:"host"       json:"host"`
+	Status    int                `bson:"status"     json:"status"`
+	Header    http.Header        `bson:"header"     json:"-"`
+	Body      []byte             `bson:"body"       json:"-"`
+	Links     []string           `bson:"links"      json:"links"`
+	Title     string             `bson:"title"      json:"title"`
 }
 type documents []document
 
@@ -122,6 +124,8 @@ func (d *documents) Load(h []host) {
 				doc.Port = p
 				doc.Scheme = s
 				doc.ID = primitive.NewObjectID()
+				doc.CreatedAt = time.Now()
+				doc.UpdatedAt = time.Now()
 				*d = append(*d, doc)
 			}
 		}
