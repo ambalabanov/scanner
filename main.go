@@ -14,6 +14,7 @@ import (
 
 	"github.com/ambalabanov/go-nmap"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -44,17 +45,18 @@ type database struct {
 	collection *mongo.Collection
 }
 type document struct {
-	Name   string      `bson:"name"   json:"name"`
-	Port   int         `bson:"port"   json:"port"`
-	URL    string      `bson:"url"    json:"url"`
-	Method string      `bson:"method" json:"method"`
-	Scheme string      `bson:"scheme" json:"scheme"`
-	Host   string      `bson:"host"   json:"host"`
-	Status int         `bson:"status" json:"status"`
-	Header http.Header `bson:"header" json:"-"`
-	Body   []byte      `bson:"body"   json:"-"`
-	Links  []string    `bson:"links"  json:"links"`
-	Title  string      `bson:"title"  json:"title"`
+	ID     primitive.ObjectID `bson:"_id"    json:"id"`
+	Name   string             `bson:"name"   json:"name"`
+	Port   int                `bson:"port"   json:"port"`
+	URL    string             `bson:"url"    json:"url"`
+	Method string             `bson:"method" json:"method"`
+	Scheme string             `bson:"scheme" json:"scheme"`
+	Host   string             `bson:"host"   json:"host"`
+	Status int                `bson:"status" json:"status"`
+	Header http.Header        `bson:"header" json:"-"`
+	Body   []byte             `bson:"body"   json:"-"`
+	Links  []string           `bson:"links"  json:"links"`
+	Title  string             `bson:"title"  json:"title"`
 }
 type documents []document
 
@@ -68,12 +70,6 @@ func main() {
 	db := config.Db
 	if err := db.connect(); err != nil {
 		log.Fatal(err)
-	}
-	if config.Db.Empty {
-		log.Println("Drop collection")
-		if err := db.drop(); err != nil {
-			log.Fatal(err)
-		}
 	}
 	var hosts documents
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
@@ -90,25 +86,28 @@ func main() {
 		hosts.Scan()
 		log.Println("Parse body")
 		hosts.Parse()
-		w.Header().Set("Content-Type", "application/json")
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(&hosts); err != nil {
+		log.Println("Drop collection")
+		if err := db.drop(); err != nil {
 			log.Fatal(err)
 		}
 		log.Println("Write to database")
 		if err := hosts.Write(db.collection); err != nil {
 			log.Fatal(err)
 		}
+		log.Println("Read from database")
+		hosts = documents{}
+		filter := bson.M{}
+		if err := hosts.Read(db.collection, filter); err != nil {
+			log.Fatal(err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(&hosts); err != nil {
+			log.Fatal(err)
+		}
 	})
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.Server.Port), nil))
-
-	// 	log.Println("Read from database...")
-	// 	hosts = documents{}
-	// 	filter := bson.M{"body": bson.M{"$ne": nil}, "title": bson.M{"$ne": ""}}
-	// 	if err := hosts.Read(db.collection, filter); err != nil {
-	// 		log.Fatal(err)
-	// 	}
 
 }
 
@@ -270,6 +269,7 @@ func (d *document) parseTitle(b io.Reader) {
 }
 
 func (d *document) Write(c *mongo.Collection) error {
+	d.ID = primitive.NewObjectID()
 	data, err := bson.Marshal(d)
 	if err != nil {
 		return err
