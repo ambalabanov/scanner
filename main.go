@@ -62,6 +62,8 @@ type document struct {
 }
 type documents []document
 
+var db database
+
 func main() {
 	log.Println("Load config")
 	var config configuration
@@ -69,7 +71,7 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Println("Connect to mongodb")
-	db := config.Db
+	db = config.Db
 	if err := db.connect(); err != nil {
 		log.Fatal(err)
 	}
@@ -80,37 +82,7 @@ func main() {
 		}
 	}
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		var h []host
-		decoder := json.NewDecoder(r.Body)
-		if err := decoder.Decode(&h); err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
-		}
-		log.Println("Load hosts")
-		hosts := documents{}
-		hosts.Load(h)
-		log.Println("Scan hosts")
-		hosts.Scan()
-		log.Println("Parse body")
-		hosts.Parse()
-		log.Println("Write to database")
-		if err := hosts.Write(db.collection); err != nil {
-			log.Fatal(err)
-		}
-		// log.Println("Read from database")
-		// hosts = documents{}
-		// filter := bson.M{}
-		// if err := hosts.Read(db.collection, filter); err != nil {
-		// 	log.Fatal(err)
-		// }
-		w.Header().Set("Content-Type", "application/json")
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(&hosts); err != nil {
-			log.Fatal(err)
-		}
-	})
+	http.HandleFunc("/scan", scanHandler)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.Server.Port), nil))
 
 }
@@ -129,6 +101,38 @@ func (d *documents) Load(h []host) {
 				*d = append(*d, doc)
 			}
 		}
+	}
+}
+
+func scanHandler(w http.ResponseWriter, r *http.Request) {
+	var h []host
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&h); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	log.Println("Load hosts")
+	hosts := documents{}
+	hosts.Load(h)
+	log.Println("Scan hosts")
+	hosts.Scan()
+	log.Println("Parse body")
+	hosts.Parse()
+	log.Println("Write to database")
+	if err := hosts.Write(db.collection); err != nil {
+		log.Fatal(err)
+	}
+	// log.Println("Read from database")
+	// hosts = documents{}
+	// filter := bson.M{}
+	// if err := hosts.Read(db.collection, filter); err != nil {
+	// 	log.Fatal(err)
+	// }
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(&hosts); err != nil {
+		log.Fatal(err)
 	}
 }
 
