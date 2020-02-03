@@ -83,6 +83,7 @@ func main() {
 	}
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
 	http.HandleFunc("/scan", scanHandler)
+	http.HandleFunc("/report", reportHandler)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.Server.Port), nil))
 
 }
@@ -104,6 +105,21 @@ func (d *documents) Load(h []host) {
 	}
 }
 
+func reportHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Read from database")
+	hosts := documents{}
+	filter := bson.M{}
+	if err := hosts.Read(db.collection, filter); err != nil {
+		log.Fatal(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(&hosts); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func scanHandler(w http.ResponseWriter, r *http.Request) {
 	var h []host
 	decoder := json.NewDecoder(r.Body)
@@ -122,12 +138,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	if err := hosts.Write(db.collection); err != nil {
 		log.Fatal(err)
 	}
-	// log.Println("Read from database")
-	// hosts = documents{}
-	// filter := bson.M{}
-	// if err := hosts.Read(db.collection, filter); err != nil {
-	// 	log.Fatal(err)
-	// }
+
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")

@@ -6,7 +6,7 @@
         "uri"  : "mongodb://localhost:27017",
         "db"   : "scannerDb",
         "coll" : "scannerCol",
-        "empty" : true
+        "empty" : false
     },
     "nmap" : {
         "use" : false,
