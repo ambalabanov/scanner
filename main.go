@@ -67,7 +67,7 @@ var db database
 func main() {
 	log.Println("Load config")
 	var config configuration
-	if err := config.Load("config.json"); err != nil {
+	if err := config.load("config.json"); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("Connect to mongodb")
@@ -88,7 +88,7 @@ func main() {
 
 }
 
-func (d *documents) Load(h []host) {
+func (d *documents) load(h []host) {
 	for _, s := range []string{"http", "https"} {
 		for _, n := range h {
 			var doc document
@@ -109,13 +109,10 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Read from database")
 	hosts := documents{}
 	filter := bson.M{}
-	if err := hosts.Read(db.collection, filter); err != nil {
+	if err := hosts.read(db.collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(&hosts); err != nil {
+	if err := hosts.respJSON(w); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -129,25 +126,31 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("Load hosts")
 	hosts := documents{}
-	hosts.Load(h)
+	hosts.load(h)
 	log.Println("Scan hosts")
-	hosts.Scan()
+	hosts.scan()
 	log.Println("Parse body")
-	hosts.Parse()
+	hosts.parse()
 	log.Println("Write to database")
-	if err := hosts.Write(db.collection); err != nil {
+	if err := hosts.write(db.collection); err != nil {
 		log.Fatal(err)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(&hosts); err != nil {
+	if err := hosts.respJSON(w); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (c *configuration) Load(filename string) error {
+func (d *documents) respJSON(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *configuration) load(filename string) error {
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
@@ -158,7 +161,7 @@ func (c *configuration) Load(filename string) error {
 	return nil
 }
 
-func (d *documents) LoadNMAP(filename string) error {
+func (d *documents) loadNMAP(filename string) error {
 	for _, s := range []string{"http", "https"} {
 		bytes, err := ioutil.ReadFile(filename)
 		if err != nil {
@@ -181,7 +184,7 @@ func (d *documents) LoadNMAP(filename string) error {
 	return nil
 }
 
-func (d document) Scan(res chan document, wg *sync.WaitGroup) error {
+func (d document) scan(res chan document, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	url := fmt.Sprintf("%s://%s:%d", d.Scheme, d.Name, d.Port)
 	client := http.Client{
@@ -201,13 +204,13 @@ func (d document) Scan(res chan document, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (d *documents) Scan() error {
+func (d *documents) scan() error {
 	var wg sync.WaitGroup
 	var dd documents
 	res := make(chan document, len(*d))
 	for _, doc := range *d {
 		wg.Add(1)
-		go doc.Scan(res, &wg)
+		go doc.scan(res, &wg)
 	}
 	wg.Wait()
 	for i, l := 0, len(res); i < l; i++ {
@@ -217,13 +220,13 @@ func (d *documents) Scan() error {
 	return nil
 }
 
-func (d *documents) Parse() error {
+func (d *documents) parse() error {
 	var wg sync.WaitGroup
 	var dd documents
 	res := make(chan document, len(*d))
 	for _, doc := range *d {
 		wg.Add(1)
-		go doc.Parse(res, &wg)
+		go doc.parse(res, &wg)
 	}
 	wg.Wait()
 	for i, l := 0, len(res); i < l; i++ {
@@ -233,7 +236,7 @@ func (d *documents) Parse() error {
 	return nil
 }
 
-func (d document) Parse(res chan document, wg *sync.WaitGroup) error {
+func (d document) parse(res chan document, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	client := http.Client{
 		Timeout: 5 * time.Second,
@@ -290,7 +293,7 @@ func (d *document) parseTitle(b io.Reader) {
 	}
 }
 
-func (d *document) Write(c *mongo.Collection) error {
+func (d *document) write(c *mongo.Collection) error {
 
 	data, err := bson.Marshal(d)
 	if err != nil {
@@ -303,10 +306,10 @@ func (d *document) Write(c *mongo.Collection) error {
 	return nil
 }
 
-func (d *documents) Write(c *mongo.Collection) error {
+func (d *documents) write(c *mongo.Collection) error {
 	docs := *d
 	for _, doc := range docs {
-		err := doc.Write(c)
+		err := doc.write(c)
 		if err != nil {
 			return err
 		}
@@ -314,14 +317,14 @@ func (d *documents) Write(c *mongo.Collection) error {
 	return nil
 }
 
-func (d *document) Read(c *mongo.Collection, f bson.M) error {
+func (d *document) read(c *mongo.Collection, f bson.M) error {
 	if err := c.FindOne(context.Background(), f).Decode(&d); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (d *documents) Read(c *mongo.Collection, f bson.M) error {
+func (d *documents) read(c *mongo.Collection, f bson.M) error {
 	cursor, err := c.Find(context.TODO(), f)
 	if err != nil {
 		return err
