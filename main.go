@@ -129,12 +129,14 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	hosts.load(h)
 	log.Println("Scan hosts")
 	hosts.scan()
-	log.Println("Parse body")
-	hosts.parse()
-	log.Println("Write to database")
-	if err := hosts.write(db.collection); err != nil {
-		log.Fatal(err)
-	}
+	go func() {
+		log.Println("Parse body")
+		hosts.parse()
+		log.Println("Write to database")
+		if err := hosts.write(db.collection); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	if err := hosts.respJSON(w); err != nil {
 		log.Fatal(err)
 	}
