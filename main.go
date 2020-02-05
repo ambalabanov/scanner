@@ -106,9 +106,14 @@ func (d *documents) load(h []host) {
 }
 
 func reportHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Read from database")
-	hosts := documents{}
 	filter := bson.M{}
+	hosts := documents{}
+	id, ok := r.URL.Query()["id"]
+	if ok {
+		docID, _ := primitive.ObjectIDFromHex(id[0])
+		filter = bson.M{"_id": docID}
+	}
+	log.Println("Read from database")
 	if err := hosts.read(db.collection, filter); err != nil {
 		log.Fatal(err)
 	}
