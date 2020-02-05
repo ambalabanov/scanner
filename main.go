@@ -98,7 +98,6 @@ func (d *documents) load(h []host) {
 				doc.Scheme = s
 				doc.ID = primitive.NewObjectID()
 				doc.CreatedAt = time.Now()
-				doc.UpdatedAt = time.Now()
 				*d = append(*d, doc)
 			}
 		}
@@ -207,6 +206,7 @@ func (d document) scan(res chan document, wg *sync.WaitGroup) error {
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
 	d.Header = r.Header
+	d.UpdatedAt = time.Now()
 	res <- d
 	return nil
 }
@@ -260,6 +260,7 @@ func (d document) parse(res chan document, wg *sync.WaitGroup) error {
 	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.Method = r.Request.Method
+	d.UpdatedAt = time.Now()
 	res <- d
 	return nil
 }
