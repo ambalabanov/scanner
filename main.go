@@ -107,9 +107,9 @@ func (d *documents) load(h []host) {
 func reportHandler(w http.ResponseWriter, r *http.Request) {
 	filter := bson.M{}
 	hosts := documents{}
-	id, ok := r.URL.Query()["id"]
-	if ok {
-		docID, _ := primitive.ObjectIDFromHex(id[0])
+	id := r.URL.Query().Get("id")
+	if id != "" {
+		docID, _ := primitive.ObjectIDFromHex(id)
 		filter = bson.M{"_id": docID}
 	}
 	log.Println("Read from database")
