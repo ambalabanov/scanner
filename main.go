@@ -133,14 +133,12 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	hosts.load(h)
 	log.Println("Scan hosts")
 	hosts.scan()
-	go func() {
-		log.Println("Parse body")
-		hosts.parse()
-		log.Println("Write to database")
-		if err := hosts.write(db.Collection); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	log.Println("Parse body")
+	hosts.parse()
+	log.Println("Write to database")
+	if err := hosts.write(db.Collection); err != nil {
+		log.Fatal(err)
+	}
 	if err := hosts.respJSON(w); err != nil {
 		log.Fatal(err)
 	}
@@ -194,7 +192,7 @@ func (d document) scan(res chan document, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	url := fmt.Sprintf("%s://%s:%d", d.Scheme, d.Name, d.Port)
 	client := http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 1 * time.Second,
 	}
 	r, err := client.Head(url)
 	if err != nil {
