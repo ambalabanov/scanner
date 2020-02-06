@@ -42,7 +42,7 @@ type database struct {
 	Db         string `json:"db"`
 	Coll       string `json:"coll"`
 	Empty      bool   `json:"empty"`
-	collection *mongo.Collection
+	Collection *mongo.Collection
 }
 type document struct {
 	ID        primitive.ObjectID `bson:"_id"        json:"id"`
@@ -113,7 +113,7 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 		filter = bson.M{"_id": docID}
 	}
 	log.Println("Read from database")
-	if err := hosts.read(db.collection, filter); err != nil {
+	if err := hosts.read(db.Collection, filter); err != nil {
 		log.Fatal(err)
 	}
 	if err := hosts.respJSON(w); err != nil {
@@ -137,7 +137,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Parse body")
 		hosts.parse()
 		log.Println("Write to database")
-		if err := hosts.write(db.collection); err != nil {
+		if err := hosts.write(db.Collection); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -348,14 +348,14 @@ func (d *documents) read(c *mongo.Collection, f bson.M) error {
 }
 
 func (d *database) delete(filter bson.M) error {
-	if _, err := d.collection.DeleteMany(context.TODO(), filter); err != nil {
+	if _, err := d.Collection.DeleteMany(context.TODO(), filter); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (d *database) drop() error {
-	if err := d.collection.Drop(context.TODO()); err != nil {
+	if err := d.Collection.Drop(context.TODO()); err != nil {
 		return err
 	}
 	return nil
@@ -366,6 +366,6 @@ func (d *database) connect() error {
 	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		return err
 	}
-	d.collection = client.Database(d.Db).Collection(d.Coll)
+	d.Collection = client.Database(d.Db).Collection(d.Coll)
 	return nil
 }
