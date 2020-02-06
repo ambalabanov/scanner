@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambalabanov/go-nmap"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -26,11 +25,7 @@ type configuration struct {
 	Server struct {
 		Port int `json:"port"`
 	} `json:"server"`
-	Db   database `json:"database"`
-	Nmap struct {
-		Use  bool   `json:"use"`
-		File string `json:"file"`
-	} `json:"nmap"`
+	Db database `json:"database"`
 }
 type host struct {
 	Name  string `json:"name"`
@@ -116,7 +111,7 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	if err := hosts.read(db.Collection, filter); err != nil {
 		log.Fatal(err)
 	}
-	if err := hosts.respJSON(w); err != nil {
+	if err := hosts.response(w); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -139,12 +134,12 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	if err := hosts.write(db.Collection); err != nil {
 		log.Fatal(err)
 	}
-	if err := hosts.respJSON(w); err != nil {
+	if err := hosts.response(w); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (d *documents) respJSON(w http.ResponseWriter) error {
+func (d *documents) response(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
@@ -161,29 +156,6 @@ func (c *configuration) load(filename string) error {
 	}
 	if err := json.Unmarshal(bytes, c); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (d *documents) loadNMAP(filename string) error {
-	for _, s := range []string{"http", "https"} {
-		bytes, err := ioutil.ReadFile(filename)
-		if err != nil {
-			return err
-		}
-		nmapXML, err := nmap.Parse(bytes)
-		if err != nil {
-			return err
-		}
-		for _, n := range nmapXML.Hosts {
-			var doc document
-			for _, p := range n.Ports {
-				doc.Name = string(n.Hostnames[0].Name)
-				doc.Port = int(p.PortId)
-				doc.Scheme = s
-				*d = append(*d, doc)
-			}
-		}
 	}
 	return nil
 }

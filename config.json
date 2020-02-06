@@ -7,9 +7,5 @@
         "db"   : "scannerDb",
         "coll" : "scannerCol",
         "empty" : true
-    },
-    "nmap" : {
-        "use" : false,
-        "file" : "nmap.xml"
     }
 }
