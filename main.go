@@ -109,10 +109,10 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("Read from database")
 	if err := hosts.read(db.Collection, filter); err != nil {
-		log.Fatal(err)
+		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
 	if err := hosts.response(w); err != nil {
-		log.Fatal(err)
+		http.Error(w, "Bad response", http.StatusInternalServerError)
 	}
 }
 
@@ -135,7 +135,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	if err := hosts.response(w); err != nil {
-		log.Fatal(err)
+		http.Error(w, "Bad response", http.StatusInternalServerError)
 	}
 }
 
