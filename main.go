@@ -41,10 +41,8 @@ type database struct {
 }
 type document struct {
 	ID        primitive.ObjectID `bson:"_id"        json:"id"`
-	CreatedAt time.Time          `bson:"created_at" json:"created_at,omitempty"`
-	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at,omitempty"`
-	Name      string             `bson:"name"       json:"name"`
-	Port      int                `bson:"port"       json:"port"`
+	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
+	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
 	URL       string             `bson:"url"        json:"url"`
 	Method    string             `bson:"method"     json:"method"`
 	Scheme    string             `bson:"scheme"     json:"scheme"`
