@@ -48,7 +48,7 @@ type document struct {
 	Scheme    string             `bson:"scheme"     json:"scheme"`
 	Host      string             `bson:"host"       json:"host"`
 	Status    int                `bson:"status"     json:"status"`
-	Header    http.Header        `bson:"header"     json:"-"`
+	Header    http.Header        `bson:"header"     json:"header"`
 	Body      []byte             `bson:"body"       json:"-"`
 	Links     []string           `bson:"links"      json:"links"`
 	Title     string             `bson:"title"      json:"title"`
