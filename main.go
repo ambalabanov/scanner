@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -58,11 +59,13 @@ type document struct {
 type documents []document
 
 var db database
+var configPath = flag.String("c", "config.json", "Path to config.json")
 
 func main() {
-	log.Println("Load config")
+	flag.Parse()
+	log.Printf("Load config: %v", *configPath)
 	var config configuration
-	if err := config.load("config.json"); err != nil {
+	if err := config.load(configPath); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("Connect to mongodb")
@@ -149,8 +152,8 @@ func (d *documents) response(w http.ResponseWriter) error {
 	return nil
 }
 
-func (c *configuration) load(filename string) error {
-	bytes, err := ioutil.ReadFile(filename)
+func (c *configuration) load(filename *string) error {
+	bytes, err := ioutil.ReadFile(*filename)
 	if err != nil {
 		return err
 	}

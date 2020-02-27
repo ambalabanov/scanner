@@ -1,0 +1,14 @@
+[Unit]
+Description=scanner service
+Documentation=https://github.com/ambalabanov/scanner
+After=network.target
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+ExecStart=/usr/bin/scanner -c /etc/scanner/config.json
+
+[Install]
+WantedBy=multi-user.target
+
