@@ -137,9 +137,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	if err := hosts.write(db.Collection); err != nil {
 		log.Fatal(err)
 	}
-	if err := hosts.response(w); err != nil {
-		http.Error(w, "Bad response", http.StatusInternalServerError)
-	}
+	http.Redirect(w, r, "/report", http.StatusFound)
 }
 
 func (d *documents) response(w http.ResponseWriter) error {
