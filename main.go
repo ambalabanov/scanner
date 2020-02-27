@@ -28,9 +28,8 @@ type configuration struct {
 	} `json:"server"`
 	Db database `json:"database"`
 }
-type host struct {
-	Name  string `json:"name"`
-	Ports []int  `json:"ports"`
+type hosts struct {
+	Urls []string `json:"urls"`
 }
 type database struct {
 	Use        bool   `json:"use"`
@@ -86,19 +85,13 @@ func main() {
 
 }
 
-func (d *documents) load(h []host) {
-	for _, s := range []string{"http", "https"} {
-		for _, n := range h {
-			var doc document
-			for _, p := range n.Ports {
-				doc.Name = n.Name
-				doc.Port = p
-				doc.Scheme = s
-				doc.ID = primitive.NewObjectID()
-				doc.CreatedAt = time.Now()
-				*d = append(*d, doc)
-			}
-		}
+func (d *documents) load(h hosts) {
+	for _, u := range h.Urls {
+		var doc document
+		doc.URL = u
+		doc.ID = primitive.NewObjectID()
+		doc.CreatedAt = time.Now()
+		*d = append(*d, doc)
 	}
 }
 
@@ -120,7 +113,7 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func scanHandler(w http.ResponseWriter, r *http.Request) {
-	var h []host
+	var h hosts
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&h); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -163,15 +156,13 @@ func (c *configuration) load(filename *string) error {
 
 func (d document) scan(res chan document, wg *sync.WaitGroup) error {
 	defer wg.Done()
-	url := fmt.Sprintf("%s://%s:%d", d.Scheme, d.Name, d.Port)
 	client := http.Client{
 		Timeout: 1 * time.Second,
 	}
-	r, err := client.Head(url)
+	r, err := client.Head(d.URL)
 	if err != nil {
 		return err
 	}
-	d.URL = url
 	d.Method = r.Request.Method
 	d.Scheme = r.Request.URL.Scheme
 	d.Host = r.Request.Host
