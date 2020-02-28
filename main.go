@@ -188,7 +188,6 @@ func (d document) parse(res chan document, wg *sync.WaitGroup) error {
 	d.Body = body
 	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
-	d.Method = r.Request.Method
 	d.UpdatedAt = time.Now()
 	res <- d
 	return nil
