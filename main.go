@@ -57,11 +57,11 @@ type documents []document
 
 var db database
 var configPath = flag.String("c", "config.json", "Path to config.json")
+var config configuration
 
-func main() {
+func init() {
 	flag.Parse()
 	log.Printf("Load config: %v", *configPath)
-	var config configuration
 	if err := config.load(configPath); err != nil {
 		log.Fatal(err)
 	}
@@ -76,6 +76,10 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+}
+
+func main() {
+
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
 	http.HandleFunc("/scan", scanHandler)
 	http.HandleFunc("/report", reportHandler)
