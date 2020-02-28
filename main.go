@@ -83,6 +83,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/scan", getAllScan).Methods("GET")
 	router.HandleFunc("/scan/{id}", getOneScan).Methods("GET")
+	router.HandleFunc("/scan", deleteAllScan).Methods("DELETE")
 	router.HandleFunc("/scan/{id}", deleteOneScan).Methods("DELETE")
 	router.HandleFunc("/scan", createScan).Methods("POST")
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
@@ -116,7 +117,6 @@ func getOneScan(w http.ResponseWriter, r *http.Request) {
 	filter := bson.M{}
 	hosts := documents{}
 	params := mux.Vars(r)
-
 	id := params["id"]
 	if id != "" {
 		docID, _ := primitive.ObjectIDFromHex(id)
@@ -141,10 +141,18 @@ func deleteOneScan(w http.ResponseWriter, r *http.Request) {
 		filter = bson.M{"_id": docID}
 	}
 	log.Println("Delete from database")
-	if err := hosts.delete(db.Collection, filter); err != nil {
+	if err := hosts.deleteOne(db.Collection, filter); err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
+}
 
+func deleteAllScan(w http.ResponseWriter, r *http.Request) {
+	filter := bson.M{}
+	hosts := documents{}
+	log.Println("Delete from database")
+	if err := hosts.deleteAll(db.Collection, filter); err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+	}
 }
 
 func createScan(w http.ResponseWriter, r *http.Request) {
@@ -267,7 +275,6 @@ func (d *document) parseTitle(b io.Reader) {
 }
 
 func (d *document) write(c *mongo.Collection) error {
-
 	data, err := bson.Marshal(d)
 	if err != nil {
 		return err
@@ -312,8 +319,15 @@ func (d *documents) read(c *mongo.Collection, f bson.M) error {
 	return nil
 }
 
-func (d *documents) delete(c *mongo.Collection, filter bson.M) error {
+func (d *documents) deleteOne(c *mongo.Collection, filter bson.M) error {
 	if _, err := c.DeleteOne(context.TODO(), filter); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *documents) deleteAll(c *mongo.Collection, filter bson.M) error {
+	if _, err := c.DeleteMany(context.TODO(), filter); err != nil {
 		return err
 	}
 	return nil
