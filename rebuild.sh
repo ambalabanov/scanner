@@ -1,4 +1,5 @@
 #!/bin/bash
+git pull
 go build .
 systemctl stop scanner.service
 cp scanner /usr/bin/
