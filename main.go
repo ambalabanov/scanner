@@ -169,7 +169,7 @@ func createScan(w http.ResponseWriter, r *http.Request) {
 	hosts.parse()
 	log.Println("Write to database")
 	if err := hosts.write(db.Collection); err != nil {
-		log.Fatal(err)
+		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
 	http.Redirect(w, r, "/scan", http.StatusFound)
 }
