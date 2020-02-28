@@ -87,8 +87,13 @@ func main() {
 	router.HandleFunc("/scan/{id}", deleteOneScan).Methods("DELETE")
 	router.HandleFunc("/scan", createScan).Methods("POST")
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf("localhost:%v", config.Server.Port), router))
-
+	srv := &http.Server{
+		Handler:      router,
+		Addr:         fmt.Sprintf("localhost:%v", config.Server.Port),
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+	log.Fatal(srv.ListenAndServe())
 }
 
 func (d *documents) load(h hosts) {
