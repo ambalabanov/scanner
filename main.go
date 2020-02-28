@@ -83,6 +83,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/scan", getAllScan).Methods("GET")
 	router.HandleFunc("/scan/{id}", getOneScan).Methods("GET")
+	router.HandleFunc("/scan/{id}", deleteOneScan).Methods("DELETE")
 	router.HandleFunc("/scan", createScan).Methods("POST")
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("localhost:%v", config.Server.Port), router))
@@ -128,6 +129,22 @@ func getOneScan(w http.ResponseWriter, r *http.Request) {
 	if err := hosts.response(w); err != nil {
 		http.Error(w, "Bad response", http.StatusInternalServerError)
 	}
+}
+
+func deleteOneScan(w http.ResponseWriter, r *http.Request) {
+	filter := bson.M{}
+	hosts := documents{}
+	params := mux.Vars(r)
+	id := params["id"]
+	if id != "" {
+		docID, _ := primitive.ObjectIDFromHex(id)
+		filter = bson.M{"_id": docID}
+	}
+	log.Println("Delete from database")
+	if err := hosts.delete(db.Collection, filter); err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+	}
+
 }
 
 func createScan(w http.ResponseWriter, r *http.Request) {
@@ -295,8 +312,8 @@ func (d *documents) read(c *mongo.Collection, f bson.M) error {
 	return nil
 }
 
-func (d *database) delete(filter bson.M) error {
-	if _, err := d.Collection.DeleteMany(context.TODO(), filter); err != nil {
+func (d *documents) delete(c *mongo.Collection, filter bson.M) error {
+	if _, err := c.DeleteOne(context.TODO(), filter); err != nil {
 		return err
 	}
 	return nil
