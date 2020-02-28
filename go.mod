@@ -1,19 +1,8 @@
 module github.com/ambalabanov/scanner
 
-go 1.13
+go 1.14
 
 require (
-	github.com/DataDog/zstd v1.4.4 // indirect
-	github.com/ambalabanov/go-nmap v0.0.0-20191202052157-3507e0b03523
-	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/golang/snappy v0.0.1 // indirect
-	github.com/google/go-cmp v0.4.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
-	github.com/stretchr/testify v1.4.0 // indirect
-	github.com/tidwall/pretty v1.0.1 // indirect
-	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
-	github.com/xdg/stringprep v1.0.0 // indirect
-	go.mongodb.org/mongo-driver v1.2.1
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
+	go.mongodb.org/mongo-driver v1.3.0
+	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 )
