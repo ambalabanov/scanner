@@ -120,8 +120,6 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Load hosts")
 	hosts := documents{}
 	hosts.load(h)
-	log.Println("Scan hosts")
-	hosts.scan()
 	log.Println("Parse body")
 	hosts.parse()
 	log.Println("Write to database")
@@ -149,41 +147,6 @@ func (c *configuration) load(filename *string) error {
 	if err := json.Unmarshal(bytes, c); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (d document) scan(res chan document, wg *sync.WaitGroup) error {
-	defer wg.Done()
-	client := http.Client{
-		Timeout: 1 * time.Second,
-	}
-	r, err := client.Head(d.URL)
-	if err != nil {
-		return err
-	}
-	d.Method = r.Request.Method
-	d.Scheme = r.Request.URL.Scheme
-	d.Host = r.Request.Host
-	d.Status = r.StatusCode
-	d.Header = r.Header
-	d.UpdatedAt = time.Now()
-	res <- d
-	return nil
-}
-
-func (d *documents) scan() error {
-	var wg sync.WaitGroup
-	var dd documents
-	res := make(chan document, len(*d))
-	for _, doc := range *d {
-		wg.Add(1)
-		go doc.scan(res, &wg)
-	}
-	wg.Wait()
-	for i, l := 0, len(res); i < l; i++ {
-		dd = append(dd, <-res)
-	}
-	*d = dd
 	return nil
 }
 
@@ -216,6 +179,12 @@ func (d document) parse(res chan document, wg *sync.WaitGroup) error {
 	if err != nil {
 		return err
 	}
+	d.Method = r.Request.Method
+	d.Scheme = r.Request.URL.Scheme
+	d.Host = r.Request.Host
+	d.Status = r.StatusCode
+	d.Header = r.Header
+	d.UpdatedAt = time.Now()
 	d.Body = body
 	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
