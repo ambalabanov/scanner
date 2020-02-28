@@ -79,7 +79,7 @@ func main() {
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
 	http.HandleFunc("/scan", scanHandler)
 	http.HandleFunc("/report", reportHandler)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.Server.Port), nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf("localhost:%v", config.Server.Port), nil))
 
 }
 
