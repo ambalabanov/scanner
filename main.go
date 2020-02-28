@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -79,11 +80,12 @@ func init() {
 }
 
 func main() {
-
+	router := mux.NewRouter()
+	router.HandleFunc("/scan", getAllScan).Methods("GET")
+	router.HandleFunc("/scan/{id}", getOneScan).Methods("GET")
+	router.HandleFunc("/scan", createScan).Methods("POST")
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
-	http.HandleFunc("/scan", scanHandler)
-	http.HandleFunc("/report", reportHandler)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf("localhost:%v", config.Server.Port), nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf("localhost:%v", config.Server.Port), router))
 
 }
 
@@ -97,10 +99,24 @@ func (d *documents) load(h hosts) {
 	}
 }
 
-func reportHandler(w http.ResponseWriter, r *http.Request) {
+func getAllScan(w http.ResponseWriter, r *http.Request) {
 	filter := bson.M{}
 	hosts := documents{}
-	id := r.URL.Query().Get("id")
+	log.Println("Read from database")
+	if err := hosts.read(db.Collection, filter); err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+	}
+	if err := hosts.response(w); err != nil {
+		http.Error(w, "Bad response", http.StatusInternalServerError)
+	}
+}
+
+func getOneScan(w http.ResponseWriter, r *http.Request) {
+	filter := bson.M{}
+	hosts := documents{}
+	params := mux.Vars(r)
+
+	id := params["id"]
 	if id != "" {
 		docID, _ := primitive.ObjectIDFromHex(id)
 		filter = bson.M{"_id": docID}
@@ -114,7 +130,7 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func scanHandler(w http.ResponseWriter, r *http.Request) {
+func createScan(w http.ResponseWriter, r *http.Request) {
 	var h hosts
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&h); err != nil {
@@ -130,7 +146,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	if err := hosts.write(db.Collection); err != nil {
 		log.Fatal(err)
 	}
-	http.Redirect(w, r, "/report", http.StatusFound)
+	http.Redirect(w, r, "/scan", http.StatusFound)
 }
 
 func (d *documents) response(w http.ResponseWriter) error {
