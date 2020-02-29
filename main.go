@@ -156,8 +156,12 @@ func deleteOneScan(w http.ResponseWriter, r *http.Request) {
 		filter = bson.M{"_id": docID}
 	}
 	log.Println("Delete from database")
-	if err := hosts.deleteOne(db.Collection, filter); err != nil {
+	count, err := hosts.deleteOne(db.Collection, filter)
+	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
+	}
+	if count == 0 {
+		http.Error(w, "Document not found", http.StatusNotFound)
 	}
 }
 
@@ -165,8 +169,12 @@ func deleteAllScan(w http.ResponseWriter, r *http.Request) {
 	filter := bson.M{}
 	hosts := documents{}
 	log.Println("Delete from database")
-	if err := hosts.deleteAll(db.Collection, filter); err != nil {
+	count, err := hosts.deleteAll(db.Collection, filter)
+	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
+	}
+	if count == 0 {
+		http.Error(w, "Document not found", http.StatusNotFound)
 	}
 }
 
@@ -334,18 +342,20 @@ func (d *documents) read(c *mongo.Collection, f bson.M) error {
 	return nil
 }
 
-func (d *documents) deleteOne(c *mongo.Collection, filter bson.M) error {
-	if _, err := c.DeleteOne(context.TODO(), filter); err != nil {
-		return err
+func (d *documents) deleteOne(c *mongo.Collection, filter bson.M) (int64, error) {
+	res, err := c.DeleteOne(context.TODO(), filter)
+	if err != nil {
+		return 0, err
 	}
-	return nil
+	return res.DeletedCount, nil
 }
 
-func (d *documents) deleteAll(c *mongo.Collection, filter bson.M) error {
-	if _, err := c.DeleteMany(context.TODO(), filter); err != nil {
-		return err
+func (d *documents) deleteAll(c *mongo.Collection, filter bson.M) (int64, error) {
+	res, err := c.DeleteMany(context.TODO(), filter)
+	if err != nil {
+		return 0, err
 	}
-	return nil
+	return res.DeletedCount, nil
 }
 
 func (d *database) drop() error {
