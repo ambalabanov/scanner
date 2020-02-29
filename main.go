@@ -186,7 +186,7 @@ func createScan(w http.ResponseWriter, r *http.Request) {
 	if err := hosts.write(db.Collection); err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
-	http.Redirect(w, r, "/scan", http.StatusFound)
+	http.Error(w, "Scan was successfully created", http.StatusCreated)
 }
 
 func (d *documents) response(w http.ResponseWriter) error {
