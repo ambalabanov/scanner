@@ -112,6 +112,11 @@ func getAllScan(w http.ResponseWriter, r *http.Request) {
 	log.Println("Read from database")
 	if err := hosts.read(db.Collection, filter); err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+	if len(hosts) == 0 {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
 	}
 	if err := hosts.response(w); err != nil {
 		http.Error(w, "Bad response", http.StatusInternalServerError)
@@ -130,6 +135,11 @@ func getOneScan(w http.ResponseWriter, r *http.Request) {
 	log.Println("Read from database")
 	if err := hosts.read(db.Collection, filter); err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+	if len(hosts) == 0 {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
 	}
 	if err := hosts.response(w); err != nil {
 		http.Error(w, "Bad response", http.StatusInternalServerError)
