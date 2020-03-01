@@ -82,9 +82,9 @@ func init() {
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/scan", getAllScan).Methods("GET")
-	router.HandleFunc("/scan/{id}", getOneScan).Methods("GET")
+	router.HandleFunc("/scan/{id:[0-9a-fA-F]+}", getOneScan).Methods("GET")
 	router.HandleFunc("/scan", deleteAllScan).Methods("DELETE")
-	router.HandleFunc("/scan/{id}", deleteOneScan).Methods("DELETE")
+	router.HandleFunc("/scan/{id:[0-9a-fA-F]+}", deleteOneScan).Methods("DELETE")
 	router.HandleFunc("/scan", createScan).Methods("POST")
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
 	srv := &http.Server{
