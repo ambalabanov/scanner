@@ -215,7 +215,7 @@ func (d *documents) parse() error {
 func (d *documents) write(c *mongo.Collection) error {
 	docs := *d
 	for _, doc := range docs {
-		err := dao.Write(c, doc)
+		err := dao.InsertOne(c, doc)
 		if err != nil {
 			return err
 		}

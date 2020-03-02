@@ -3,8 +3,6 @@ package dao
 import (
 	"context"
 
-	"github.com/ambalabanov/scanner/models"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -28,13 +26,9 @@ func Drop(c *mongo.Collection) error {
 	return nil
 }
 
-//Write one document
-func Write(c *mongo.Collection, d models.Document) error {
-	data, err := bson.Marshal(d)
-	if err != nil {
-		return err
-	}
-	_, err = c.InsertOne(context.TODO(), data)
+//InsertOne document
+func InsertOne(c *mongo.Collection, d interface{}) error {
+	_, err := c.InsertOne(context.TODO(), d)
 	if err != nil {
 		return err
 	}
