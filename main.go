@@ -13,12 +13,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambalabanov/scanner/dao"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -27,19 +26,17 @@ type configuration struct {
 	Server struct {
 		Port int `json:"port"`
 	} `json:"server"`
-	Db database `json:"database"`
+	Database struct {
+		URI   string `json:"uri"`
+		Db    string `json:"db"`
+		Coll  string `json:"coll"`
+		Empty bool   `json:"empty"`
+	} `json:"database"`
 }
 type hosts struct {
 	Urls []string `json:"urls"`
 }
-type database struct {
-	Use        bool   `json:"use"`
-	URI        string `json:"uri"`
-	Db         string `json:"db"`
-	Coll       string `json:"coll"`
-	Empty      bool   `json:"empty"`
-	Collection *mongo.Collection
-}
+
 type document struct {
 	ID        primitive.ObjectID `bson:"_id"        json:"id"`
 	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
@@ -56,9 +53,9 @@ type document struct {
 }
 type documents []document
 
-var db database
 var configPath = flag.String("c", "config.json", "Path to config.json")
 var config configuration
+var collection *mongo.Collection
 
 func init() {
 	flag.Parse()
@@ -67,13 +64,14 @@ func init() {
 		log.Fatal(err)
 	}
 	log.Println("Connect to mongodb")
-	db = config.Db
-	if err := db.connect(); err != nil {
+	var err error
+	collection, err = dao.Connect(config.Database.URI, config.Database.Db, config.Database.Coll)
+	if err != nil {
 		log.Fatal(err)
 	}
-	if config.Db.Empty {
+	if config.Database.Empty {
 		log.Println("Drop collection")
-		if err := db.drop(); err != nil {
+		if err := dao.Drop(collection); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -110,7 +108,7 @@ func getAllScan(w http.ResponseWriter, r *http.Request) {
 	filter := bson.M{}
 	hosts := documents{}
 	log.Println("Read from database")
-	if err := hosts.read(db.Collection, filter); err != nil {
+	if err := hosts.read(collection, filter); err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
 	}
@@ -133,7 +131,7 @@ func getOneScan(w http.ResponseWriter, r *http.Request) {
 		filter = bson.M{"_id": docID}
 	}
 	log.Println("Read from database")
-	if err := hosts.read(db.Collection, filter); err != nil {
+	if err := hosts.read(collection, filter); err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
 	}
@@ -156,7 +154,7 @@ func deleteOneScan(w http.ResponseWriter, r *http.Request) {
 		filter = bson.M{"_id": docID}
 	}
 	log.Println("Delete from database")
-	count, err := hosts.deleteOne(db.Collection, filter)
+	count, err := hosts.deleteOne(collection, filter)
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
@@ -169,7 +167,7 @@ func deleteAllScan(w http.ResponseWriter, r *http.Request) {
 	filter := bson.M{}
 	hosts := documents{}
 	log.Println("Delete from database")
-	count, err := hosts.deleteAll(db.Collection, filter)
+	count, err := hosts.deleteAll(collection, filter)
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
@@ -191,7 +189,7 @@ func createScan(w http.ResponseWriter, r *http.Request) {
 	log.Println("Parse body")
 	hosts.parse()
 	log.Println("Write to database")
-	if err := hosts.write(db.Collection); err != nil {
+	if err := hosts.write(collection); err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
 	http.Error(w, "Scan was successfully created", http.StatusCreated)
@@ -356,20 +354,4 @@ func (d *documents) deleteAll(c *mongo.Collection, filter bson.M) (int64, error)
 		return 0, err
 	}
 	return res.DeletedCount, nil
-}
-
-func (d *database) drop() error {
-	if err := d.Collection.Drop(context.TODO()); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *database) connect() error {
-	client, _ := mongo.Connect(context.TODO(), options.Client().ApplyURI(d.URI))
-	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		return err
-	}
-	d.Collection = client.Database(d.Db).Collection(d.Coll)
-	return nil
 }
