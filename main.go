@@ -105,14 +105,11 @@ func getAllScan(w http.ResponseWriter, r *http.Request) {
 }
 
 func getOneScan(w http.ResponseWriter, r *http.Request) {
-	filter := bson.M{}
 	hosts := documents{}
 	params := mux.Vars(r)
 	id := params["id"]
-	if id != "" {
-		docID, _ := primitive.ObjectIDFromHex(id)
-		filter = bson.M{"_id": docID}
-	}
+	docID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": docID}
 	log.Println("Read from database")
 	if err := hosts.read(collection, filter); err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
