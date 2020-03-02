@@ -34,3 +34,12 @@ func InsertOne(c *mongo.Collection, d interface{}) error {
 	}
 	return nil
 }
+
+//InsertMany document
+func InsertMany(c *mongo.Collection, d []interface{}) error {
+	_, err := c.InsertMany(context.TODO(), d)
+	if err != nil {
+		return err
+	}
+	return nil
+}
