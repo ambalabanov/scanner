@@ -35,11 +35,20 @@ func InsertOne(c *mongo.Collection, d interface{}) error {
 	return nil
 }
 
-//InsertMany document
+//InsertMany documents
 func InsertMany(c *mongo.Collection, d []interface{}) error {
 	_, err := c.InsertMany(context.TODO(), d)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+//Delete documents
+func Delete(c *mongo.Collection, f interface{}) (int64, error) {
+	res, err := c.DeleteMany(context.TODO(), f)
+	if err != nil {
+		return 0, err
+	}
+	return res.DeletedCount, nil
 }

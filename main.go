@@ -125,16 +125,12 @@ func getOneScan(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteOneScan(w http.ResponseWriter, r *http.Request) {
-	filter := bson.M{}
-	hosts := documents{}
 	params := mux.Vars(r)
 	id := params["id"]
-	if id != "" {
-		docID, _ := primitive.ObjectIDFromHex(id)
-		filter = bson.M{"_id": docID}
-	}
+	docID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": docID}
 	log.Println("Delete from database")
-	count, err := hosts.deleteOne(collection, filter)
+	count, err := dao.Delete(collection, filter)
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
@@ -145,9 +141,8 @@ func deleteOneScan(w http.ResponseWriter, r *http.Request) {
 
 func deleteAllScan(w http.ResponseWriter, r *http.Request) {
 	filter := bson.M{}
-	hosts := documents{}
 	log.Println("Delete from database")
-	count, err := hosts.deleteAll(collection, filter)
+	count, err := dao.Delete(collection, filter)
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
@@ -236,20 +231,4 @@ func (d *documents) read(c *mongo.Collection, f bson.M) error {
 		*d = append(*d, result)
 	}
 	return nil
-}
-
-func (d *documents) deleteOne(c *mongo.Collection, filter bson.M) (int64, error) {
-	res, err := c.DeleteOne(context.TODO(), filter)
-	if err != nil {
-		return 0, err
-	}
-	return res.DeletedCount, nil
-}
-
-func (d *documents) deleteAll(c *mongo.Collection, filter bson.M) (int64, error) {
-	res, err := c.DeleteMany(context.TODO(), filter)
-	if err != nil {
-		return 0, err
-	}
-	return res.DeletedCount, nil
 }
