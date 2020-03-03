@@ -1,10 +1,8 @@
 ### HOW-TO USE:
 Post JSON to /scan:
 ```json
-{
-	"urls": [
-		"https://www.yandex.ru",
-		"http://scanme.nmap.org"
-	]
-}
+[
+	{"url": "https://www.yandex.ru"},
+	{"url": "http://scanme.nmap.org"}
+]
 ```
