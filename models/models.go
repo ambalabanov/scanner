@@ -27,6 +27,7 @@ type Document struct {
 	Body      []byte             `bson:"body"       json:"-"`
 	Links     []string           `bson:"links"      json:"links"`
 	Title     string             `bson:"title"      json:"title"`
+	Forms     []string           `bson:"form"      json:"form"`
 }
 
 //Parse html body
@@ -58,14 +59,18 @@ func (d *Document) Parse() error {
 
 func (d *Document) parseLinks(b io.Reader) {
 	var links []string
+	var forms []string
 	tokenizer := html.NewTokenizer(b)
 	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
 		token := tokenizer.Token()
 		if tokenType == html.StartTagToken {
-			if token.DataAtom == atom.A {
+			if token.DataAtom == atom.A || token.DataAtom == atom.Form {
 				for _, attr := range token.Attr {
 					if attr.Key == "href" {
 						links = append(links, attr.Val)
+					}
+					if attr.Key == "action" {
+						forms = append(forms, attr.Val)
 					}
 				}
 			}
@@ -73,6 +78,7 @@ func (d *Document) parseLinks(b io.Reader) {
 		tokenType = tokenizer.Next()
 	}
 	d.Links = links
+	d.Forms = forms
 }
 
 func (d *Document) parseTitle(b io.Reader) {
