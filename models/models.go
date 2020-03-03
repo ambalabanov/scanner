@@ -27,7 +27,7 @@ type Document struct {
 	Body      []byte             `bson:"body"       json:"-"`
 	Links     []string           `bson:"links"      json:"links"`
 	Title     string             `bson:"title"      json:"title"`
-	Forms     []string           `bson:"form"      json:"form"`
+	Forms     []string           `bson:"forms"      json:"forms"`
 }
 
 //Parse html body
@@ -58,8 +58,7 @@ func (d *Document) Parse() error {
 }
 
 func (d *Document) parseLinks(b io.Reader) {
-	var links []string
-	var forms []string
+	var links, forms []string
 	tokenizer := html.NewTokenizer(b)
 	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
 		token := tokenizer.Token()
