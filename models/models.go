@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -30,8 +30,7 @@ type Document struct {
 }
 
 //Parse html body
-func (d Document) Parse(res chan Document, wg *sync.WaitGroup) error {
-	defer wg.Done()
+func (d *Document) Parse() error {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -48,12 +47,12 @@ func (d Document) Parse(res chan Document, wg *sync.WaitGroup) error {
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
 	d.Header = r.Header
-	d.UpdatedAt = time.Now()
+	d.ID = primitive.NewObjectID()
 	d.Body = body
+	log.Println("Parse body")
 	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.UpdatedAt = time.Now()
-	res <- d
 	return nil
 }
 
