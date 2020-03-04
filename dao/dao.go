@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/ambalabanov/scanner/models"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -16,62 +17,37 @@ var collection *mongo.Collection
 func Connect(URI string, Db string, Coll string) error {
 	log.Println("Connect to mongodb")
 	client, _ := mongo.Connect(context.TODO(), options.Client().ApplyURI(URI))
-	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		return err
-	}
+	err := client.Ping(context.TODO(), readpref.Primary())
 	collection = client.Database(Db).Collection(Coll)
-	return nil
+	return err
 }
 
 // Drop collection
 func Drop() error {
 	log.Println("Drop collection")
-	if err := collection.Drop(context.TODO()); err != nil {
-		return err
-	}
-	return nil
+	err := collection.Drop(context.TODO())
+	return err
 }
 
 //InsertOne document
-func InsertOne(d interface{}) error {
+func InsertOne(d models.Document) error {
 	log.Println("Write to database")
 	_, err := collection.InsertOne(context.TODO(), d)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-//InsertMany documents
-func InsertMany(d []interface{}) error {
-	log.Println("Write to database")
-	_, err := collection.InsertMany(context.TODO(), d)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 //Delete documents
-func Delete(f interface{}) (int64, error) {
+func Delete(f bson.M) (int64, error) {
 	log.Println("Delete documents")
 	res, err := collection.DeleteMany(context.TODO(), f)
-	if err != nil {
-		return 0, err
-	}
-	return res.DeletedCount, nil
+	return res.DeletedCount, err
 }
 
 //Find documents
-func Find(f interface{}) ([]models.Document, error) {
+func Find(f bson.M) ([]models.Document, error) {
 	log.Println("Read from database")
 	var doc []models.Document
 	cursor, err := collection.Find(context.TODO(), f)
-	if err != nil {
-		return doc, err
-	}
-	if err = cursor.All(context.TODO(), &doc); err != nil {
-		return doc, err
-	}
-	return doc, nil
+	err = cursor.All(context.TODO(), &doc)
+	return doc, err
 }
