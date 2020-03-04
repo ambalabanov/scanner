@@ -34,7 +34,7 @@ func Drop() error {
 
 //InsertOne document
 func InsertOne(d interface{}) error {
-	log.Println("Write from database")
+	log.Println("Write to database")
 	_, err := collection.InsertOne(context.TODO(), d)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func InsertOne(d interface{}) error {
 
 //InsertMany documents
 func InsertMany(d []interface{}) error {
-	log.Println("Write from database")
+	log.Println("Write to database")
 	_, err := collection.InsertMany(context.TODO(), d)
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func Find(f interface{}) ([]models.Document, error) {
 		return doc, err
 	}
 	if err = cursor.All(context.TODO(), &doc); err != nil {
-		log.Fatal(err)
+		return doc, err
 	}
 	return doc, nil
 }
