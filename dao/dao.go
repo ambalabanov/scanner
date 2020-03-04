@@ -6,6 +6,7 @@ import (
 
 	"github.com/ambalabanov/scanner/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -34,18 +35,36 @@ func InsertOne(d models.Document) error {
 	return err
 }
 
-//Delete documents
-func Delete(f bson.M) (int64, error) {
+//DeleteOne document
+func DeleteOne(id string) (int64, error) {
 	log.Println("Delete documents")
-	res, err := collection.DeleteMany(context.TODO(), f)
+	docID, _ := primitive.ObjectIDFromHex(id)
+	res, err := collection.DeleteMany(context.TODO(), bson.M{"_id": docID})
 	return res.DeletedCount, err
 }
 
-//Find documents
-func Find(f bson.M) ([]models.Document, error) {
+//DeleteAll documents
+func DeleteAll() (int64, error) {
+	log.Println("Delete documents")
+	res, err := collection.DeleteOne(context.TODO(), bson.M{})
+	return res.DeletedCount, err
+}
+
+//FindAll documents
+func FindAll() ([]models.Document, error) {
 	log.Println("Read from database")
 	var doc []models.Document
-	cursor, err := collection.Find(context.TODO(), f)
+	cursor, err := collection.Find(context.TODO(), bson.M{})
+	err = cursor.All(context.TODO(), &doc)
+	return doc, err
+}
+
+//FindOne document
+func FindOne(id string) ([]models.Document, error) {
+	log.Println("Read from database")
+	var doc []models.Document
+	docID, _ := primitive.ObjectIDFromHex(id)
+	cursor, err := collection.Find(context.TODO(), bson.M{"_id": docID})
 	err = cursor.All(context.TODO(), &doc)
 	return doc, err
 }

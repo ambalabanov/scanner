@@ -7,8 +7,6 @@ import (
 	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
 	"github.com/gorilla/mux"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 //CreateScan handler for POST
@@ -31,8 +29,7 @@ func CreateScan(w http.ResponseWriter, r *http.Request) {
 
 //GetAllScan for GET
 func GetAllScan(w http.ResponseWriter, r *http.Request) {
-	filter := bson.M{}
-	hosts, err := dao.Find(filter)
+	hosts, err := dao.FindAll()
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
@@ -49,10 +46,7 @@ func GetAllScan(w http.ResponseWriter, r *http.Request) {
 //GetOneScan for GET
 func GetOneScan(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id := params["id"]
-	docID, _ := primitive.ObjectIDFromHex(id)
-	filter := bson.M{"_id": docID}
-	hosts, err := dao.Find(filter)
+	hosts, err := dao.FindOne(params["id"])
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
@@ -80,10 +74,7 @@ func JSONresponse(w http.ResponseWriter, d []models.Document) error {
 //DeleteOneScan fo DELETE
 func DeleteOneScan(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id := params["id"]
-	docID, _ := primitive.ObjectIDFromHex(id)
-	filter := bson.M{"_id": docID}
-	count, err := dao.Delete(filter)
+	count, err := dao.DeleteOne(params["id"])
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
@@ -94,8 +85,7 @@ func DeleteOneScan(w http.ResponseWriter, r *http.Request) {
 
 //DeleteAllScan fo DELETE
 func DeleteAllScan(w http.ResponseWriter, r *http.Request) {
-	filter := bson.M{}
-	count, err := dao.Delete(filter)
+	count, err := dao.DeleteAll()
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 	}
