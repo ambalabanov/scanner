@@ -49,6 +49,7 @@ func (d *Document) Parse() error {
 	d.Status = r.StatusCode
 	d.Header = r.Header
 	d.ID = primitive.NewObjectID()
+	d.CreatedAt = time.Now()
 	d.Body = body
 	log.Println("Parse body")
 	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
