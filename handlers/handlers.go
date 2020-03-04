@@ -13,7 +13,7 @@ import (
 
 //CreateScan handler for POST
 func CreateScan(w http.ResponseWriter, r *http.Request) {
-	hosts := make([]models.Document, 0)
+	var hosts []models.Document
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&hosts); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -67,7 +67,7 @@ func GetOneScan(w http.ResponseWriter, r *http.Request) {
 }
 
 //JSONresponse to http
-func JSONresponse(w http.ResponseWriter, d []interface{}) error {
+func JSONresponse(w http.ResponseWriter, d []models.Document) error {
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")

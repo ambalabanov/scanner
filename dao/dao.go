@@ -63,19 +63,15 @@ func Delete(f interface{}) (int64, error) {
 }
 
 //Find documents
-func Find(f interface{}) ([]interface{}, error) {
+func Find(f interface{}) ([]models.Document, error) {
 	log.Println("Read from database")
-	doc := make([]interface{}, 0)
+	var doc []models.Document
 	cursor, err := collection.Find(context.TODO(), f)
 	if err != nil {
 		return doc, err
 	}
-	for cursor.Next(context.TODO()) {
-		var result models.Document
-		if err := cursor.Decode(&result); err != nil {
-			return doc, err
-		}
-		doc = append(doc, result)
+	if err = cursor.All(context.TODO(), &doc); err != nil {
+		log.Fatal(err)
 	}
 	return doc, nil
 }
