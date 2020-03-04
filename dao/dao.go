@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 var collection *mongo.Collection
@@ -16,8 +15,7 @@ var collection *mongo.Collection
 //Connect to db
 func Connect(URI string, Db string, Coll string) error {
 	log.Println("Connect to mongodb")
-	client, _ := mongo.Connect(context.TODO(), options.Client().ApplyURI(URI))
-	err := client.Ping(context.TODO(), readpref.Primary())
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(URI))
 	collection = client.Database(Db).Collection(Coll)
 	return err
 }
