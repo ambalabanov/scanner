@@ -65,10 +65,10 @@ func (d *Document) parseLinks(b io.Reader) {
 		if tokenType == html.StartTagToken {
 			if token.DataAtom == atom.A || token.DataAtom == atom.Form {
 				for _, attr := range token.Attr {
-					if attr.Key == "href" {
+					switch attr.Key {
+					case "href":
 						links = append(links, attr.Val)
-					}
-					if attr.Key == "action" {
+					case "action":
 						forms = append(forms, attr.Val)
 					}
 				}
