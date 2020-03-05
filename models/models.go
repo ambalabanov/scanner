@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"sync"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/html"
@@ -35,15 +36,23 @@ type Documents []Document
 
 //Parse func
 func (d *Documents) Parse() {
+	var wg sync.WaitGroup
 	var dd Documents
-	for _, h := range *d {
-		h.parse()
-		dd = append(dd, h)
+	wg.Wait()
+	res := make(chan Document, len(*d))
+	for _, doc := range *d {
+		wg.Add(1)
+		go doc.parse(res, &wg)
+	}
+	wg.Wait()
+	for i, l := 0, len(res); i < l; i++ {
+		dd = append(dd, <-res)
 	}
 	*d = dd
 }
 
-func (d *Document) parse() error {
+func (d Document) parse(res chan Document, wg *sync.WaitGroup) error {
+	defer wg.Done()
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -67,6 +76,7 @@ func (d *Document) parse() error {
 	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.UpdatedAt = time.Now()
+	res <- d
 	return nil
 }
 

@@ -19,8 +19,8 @@ func CreateScan(w http.ResponseWriter, r *http.Request) {
 	}
 	hosts.Parse()
 	if err := dao.InsertMany(hosts); err != nil {
-			http.Error(w, "DB error", http.StatusInternalServerError)
-			return
+		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
 	}
 	http.Error(w, "Scan was successfully created", http.StatusCreated)
 }
@@ -55,6 +55,7 @@ func GetOneScan(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := JSONresponse(w, hosts); err != nil {
 		http.Error(w, "Bad response", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -63,10 +64,8 @@ func JSONresponse(w http.ResponseWriter, d []models.Document) error {
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(d); err != nil {
-		return err
-	}
-	return nil
+	err := encoder.Encode(d)
+	return err
 }
 
 //DeleteOneScan for DELETE
