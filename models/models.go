@@ -30,8 +30,20 @@ type Document struct {
 	Forms     []string           `bson:"forms"      json:"forms"`
 }
 
-//Parse html body
-func (d *Document) Parse() error {
+//Documents type
+type Documents []Document
+
+//Parse func
+func (d *Documents) Parse() {
+	var dd Documents
+	for _, h := range *d {
+		h.parse()
+		dd = append(dd, h)
+	}
+	*d = dd
+}
+
+func (d *Document) parse() error {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}

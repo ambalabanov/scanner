@@ -11,18 +11,16 @@ import (
 
 //CreateScan handler for POST
 func CreateScan(w http.ResponseWriter, r *http.Request) {
-	var hosts []models.Document
+	var hosts models.Documents
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&hosts); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	for _, h := range hosts {
-		h.Parse()
-		if err := dao.InsertOne(h); err != nil {
+	hosts.Parse()
+	if err := dao.InsertMany(hosts); err != nil {
 			http.Error(w, "DB error", http.StatusInternalServerError)
 			return
-		}
 	}
 	http.Error(w, "Scan was successfully created", http.StatusCreated)
 }
@@ -71,7 +69,7 @@ func JSONresponse(w http.ResponseWriter, d []models.Document) error {
 	return nil
 }
 
-//DeleteOneScan fo DELETE
+//DeleteOneScan for DELETE
 func DeleteOneScan(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	count, err := dao.DeleteOne(params["id"])
@@ -83,7 +81,7 @@ func DeleteOneScan(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//DeleteAllScan fo DELETE
+//DeleteAllScan for DELETE
 func DeleteAllScan(w http.ResponseWriter, r *http.Request) {
 	count, err := dao.DeleteAll()
 	if err != nil {

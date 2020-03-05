@@ -35,6 +35,16 @@ func InsertOne(d models.Document) error {
 	return err
 }
 
+//InsertMany document
+func InsertMany(d models.Documents) error {
+	log.Println("Write to database")
+	var err error
+	for _,h := range d {
+		_, err = collection.InsertOne(context.TODO(), h)
+	}
+	return err
+}
+
 //DeleteOne document
 func DeleteOne(id string) (int64, error) {
 	log.Println("Delete documents")
@@ -53,7 +63,7 @@ func DeleteAll() (int64, error) {
 //FindAll documents
 func FindAll() ([]models.Document, error) {
 	log.Println("Read from database")
-	var doc []models.Document
+	var doc models.Documents
 	cursor, err := collection.Find(context.TODO(), bson.M{})
 	err = cursor.All(context.TODO(), &doc)
 	return doc, err
@@ -62,7 +72,7 @@ func FindAll() ([]models.Document, error) {
 //FindOne document
 func FindOne(id string) ([]models.Document, error) {
 	log.Println("Read from database")
-	var doc []models.Document
+	var doc models.Documents
 	docID, _ := primitive.ObjectIDFromHex(id)
 	cursor, err := collection.Find(context.TODO(), bson.M{"_id": docID})
 	err = cursor.All(context.TODO(), &doc)
