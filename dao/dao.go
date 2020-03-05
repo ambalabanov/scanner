@@ -49,14 +49,14 @@ func InsertMany(d models.Documents) error {
 func DeleteOne(id string) (int64, error) {
 	log.Println("Delete documents")
 	docID, _ := primitive.ObjectIDFromHex(id)
-	res, err := collection.DeleteMany(context.TODO(), bson.M{"_id": docID})
+	res, err := collection.DeleteOne(context.TODO(), bson.M{"_id": docID})
 	return res.DeletedCount, err
 }
 
 //DeleteAll documents
 func DeleteAll() (int64, error) {
-	log.Println("Delete documents")
-	res, err := collection.DeleteOne(context.TODO(), bson.M{})
+	log.Println("Delete all documents")
+	res, err := collection.DeleteMany(context.TODO(), bson.M{})
 	return res.DeletedCount, err
 }
 
