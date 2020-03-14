@@ -20,19 +20,14 @@ import (
 func Parse(d models.Documents) {
 	var wg sync.WaitGroup
 	wg.Wait()
-	res := make(chan models.Document, len(d))
 	for _, doc := range d {
 		wg.Add(1)
-		go parse(doc, res, &wg)
+		go parse(doc, &wg)
 	}
 	wg.Wait()
-	for i, l := 0, len(res); i < l; i++ {
-		r := <-res
-		dao.InsertOne(r)
-	}
 }
 
-func parse(d models.Document, res chan models.Document, wg *sync.WaitGroup) error {
+func parse(d models.Document, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	client := http.Client{
 		Timeout: 5 * time.Second,
@@ -57,8 +52,7 @@ func parse(d models.Document, res chan models.Document, wg *sync.WaitGroup) erro
 	parseLinks(&d, ioutil.NopCloser(bytes.NewBuffer(body)))
 	parseTitle(&d, ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.UpdatedAt = time.Now()
-	res <- d
-	return nil
+	return dao.InsertOne(d)
 }
 
 func parseLinks(d *models.Document, b io.Reader) {
