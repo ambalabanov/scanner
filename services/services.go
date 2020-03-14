@@ -1,4 +1,4 @@
-package models
+package services
 
 import (
 	"bytes"
@@ -6,52 +6,33 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
 	"sync"
+	"time"
 
+	"github.com/ambalabanov/scanner/dao"
+	"github.com/ambalabanov/scanner/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
 
-//Document type
-type Document struct {
-	ID        primitive.ObjectID `bson:"_id"        json:"id"`
-	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
-	URL       string             `bson:"url"        json:"url"`
-	Method    string             `bson:"method"     json:"method"`
-	Scheme    string             `bson:"scheme"     json:"scheme"`
-	Host      string             `bson:"host"       json:"host"`
-	Status    int                `bson:"status"     json:"status"`
-	Header    http.Header        `bson:"header"     json:"header"`
-	Body      []byte             `bson:"body"       json:"-"`
-	Links     []string           `bson:"links"      json:"links"`
-	Title     string             `bson:"title"      json:"title"`
-	Forms     []string           `bson:"forms"      json:"forms"`
-}
-
-//Documents type
-type Documents []Document
-
 //Parse func
-func (d *Documents) Parse() {
+func Parse(d models.Documents) {
 	var wg sync.WaitGroup
-	var dd Documents
 	wg.Wait()
-	res := make(chan Document, len(*d))
-	for _, doc := range *d {
+	res := make(chan models.Document, len(d))
+	for _, doc := range d {
 		wg.Add(1)
-		go doc.parse(res, &wg)
+		go parse(doc, res, &wg)
 	}
 	wg.Wait()
 	for i, l := 0, len(res); i < l; i++ {
-		dd = append(dd, <-res)
+		r := <-res
+		dao.InsertOne(r)
 	}
-	*d = dd
 }
 
-func (d Document) parse(res chan Document, wg *sync.WaitGroup) error {
+func parse(d models.Document, res chan models.Document, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	client := http.Client{
 		Timeout: 5 * time.Second,
@@ -73,14 +54,14 @@ func (d Document) parse(res chan Document, wg *sync.WaitGroup) error {
 	d.CreatedAt = time.Now()
 	d.Body = body
 	log.Println("Parse body")
-	d.parseLinks(ioutil.NopCloser(bytes.NewBuffer(body)))
-	d.parseTitle(ioutil.NopCloser(bytes.NewBuffer(body)))
+	parseLinks(&d, ioutil.NopCloser(bytes.NewBuffer(body)))
+	parseTitle(&d, ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.UpdatedAt = time.Now()
 	res <- d
 	return nil
 }
 
-func (d *Document) parseLinks(b io.Reader) {
+func parseLinks(d *models.Document, b io.Reader) {
 	var links, forms []string
 	tokenizer := html.NewTokenizer(b)
 	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
@@ -103,7 +84,7 @@ func (d *Document) parseLinks(b io.Reader) {
 	d.Forms = forms
 }
 
-func (d *Document) parseTitle(b io.Reader) {
+func parseTitle(d *models.Document, b io.Reader) {
 	tokenizer := html.NewTokenizer(b)
 	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
 		token := tokenizer.Token()

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
+	"github.com/ambalabanov/scanner/services"
 	"github.com/gorilla/mux"
 )
 
@@ -17,11 +18,7 @@ func CreateScan(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	hosts.Parse()
-	if err := dao.InsertMany(hosts); err != nil {
-		http.Error(w, "DB error", http.StatusInternalServerError)
-		return
-	}
+	go services.Parse(hosts)
 	http.Error(w, "Scan was successfully created", http.StatusCreated)
 }
 
