@@ -19,12 +19,11 @@ import (
 //Parse func
 func Parse(d models.Documents) {
 	var wg sync.WaitGroup
-	wg.Wait()
+	defer wg.Wait()
 	for _, doc := range d {
 		wg.Add(1)
 		go parse(doc, &wg)
 	}
-	wg.Wait()
 }
 
 func parse(d models.Document, wg *sync.WaitGroup) error {
