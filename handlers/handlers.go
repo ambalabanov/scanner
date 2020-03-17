@@ -53,6 +53,7 @@ func GetOneScan(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Document not found", http.StatusNotFound)
 		return
 	}
+	err = JSONResponse(w, hosts)
 	if err != nil {
 		handleError(w, err)
 	}
