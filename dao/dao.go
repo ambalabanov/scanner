@@ -17,8 +17,11 @@ var collection *mongo.Collection
 func Connect(URI string, Db string, Coll string) error {
 	log.Println("Connect to mongodb")
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(URI))
+	if err != nil {
+		return err
+	}
 	collection = client.Database(Db).Collection(Coll)
-	return err
+	return nil
 }
 
 // Drop collection
@@ -35,21 +38,14 @@ func InsertOne(d models.Document) error {
 	return err
 }
 
-//InsertMany document
-func InsertMany(d models.Documents) error {
-	log.Println("Write to database")
-	var err error
-	for _,h := range d {
-		_, err = collection.InsertOne(context.TODO(), h)
-	}
-	return err
-}
-
 //DeleteOne document
 func DeleteOne(id string) (int64, error) {
 	log.Println("Delete documents")
 	docID, _ := primitive.ObjectIDFromHex(id)
 	res, err := collection.DeleteOne(context.TODO(), bson.M{"_id": docID})
+	if err != nil {
+		return 0, err
+	}
 	return res.DeletedCount, err
 }
 
@@ -57,6 +53,9 @@ func DeleteOne(id string) (int64, error) {
 func DeleteAll() (int64, error) {
 	log.Println("Delete all documents")
 	res, err := collection.DeleteMany(context.TODO(), bson.M{})
+	if err != nil {
+		return 0, err
+	}
 	return res.DeletedCount, err
 }
 
@@ -65,8 +64,14 @@ func FindAll() ([]models.Document, error) {
 	log.Println("Read from database")
 	var doc models.Documents
 	cursor, err := collection.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return nil, err
+	}
 	err = cursor.All(context.TODO(), &doc)
-	return doc, err
+	if err != nil {
+		return nil, err
+	}
+	return doc, nil
 }
 
 //FindOne document
@@ -75,6 +80,12 @@ func FindOne(id string) ([]models.Document, error) {
 	var doc models.Documents
 	docID, _ := primitive.ObjectIDFromHex(id)
 	cursor, err := collection.Find(context.TODO(), bson.M{"_id": docID})
+	if err != nil {
+		return nil, err
+	}
 	err = cursor.All(context.TODO(), &doc)
-	return doc, err
+	if err != nil {
+		return nil, err
+	}
+	return doc, nil
 }

@@ -26,18 +26,18 @@ func Parse(d models.Documents) {
 	}
 }
 
-func parse(d models.Document, wg *sync.WaitGroup) error {
+func parse(d models.Document, wg *sync.WaitGroup) {
 	defer wg.Done()
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
 	r, err := client.Get(d.URL)
 	if err != nil {
-		return err
+		return
 	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return err
+		return
 	}
 	d.Method = r.Request.Method
 	d.Scheme = r.Request.URL.Scheme
@@ -51,7 +51,9 @@ func parse(d models.Document, wg *sync.WaitGroup) error {
 	parseLinks(&d, ioutil.NopCloser(bytes.NewBuffer(body)))
 	parseTitle(&d, ioutil.NopCloser(bytes.NewBuffer(body)))
 	d.UpdatedAt = time.Now()
-	return dao.InsertOne(d)
+	if err := dao.InsertOne(d); err != nil {
+		log.Println(err.Error())
+	}
 }
 
 func parseLinks(d *models.Document, b io.Reader) {
