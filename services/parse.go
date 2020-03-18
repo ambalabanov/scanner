@@ -16,7 +16,6 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-//Parse func
 func Parse(d models.Documents) {
 	var wg sync.WaitGroup
 	defer wg.Wait()

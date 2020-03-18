@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bufio"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/ambalabanov/scanner/dao"
@@ -14,8 +16,13 @@ func handleError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
-//CreateScan handler for POST
 func CreateScan(w http.ResponseWriter, r *http.Request) {
+	hosts := LoadHosts(r)
+	go services.Parse(hosts)
+	http.Error(w, "Scan was successfully created", http.StatusCreated)
+}
+
+func CreateParse(w http.ResponseWriter, r *http.Request) {
 	var hosts models.Documents
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&hosts)
@@ -23,11 +30,10 @@ func CreateScan(w http.ResponseWriter, r *http.Request) {
 		handleError(w, err)
 	}
 	go services.Parse(hosts)
-	http.Error(w, "Scan was successfully created", http.StatusCreated)
+	http.Error(w, "Parse was successfully created", http.StatusCreated)
 }
 
-//GetAllScan for GET
-func GetAllScan(w http.ResponseWriter, _ *http.Request) {
+func GetAllParse(w http.ResponseWriter, _ *http.Request) {
 	hosts, err := dao.FindAll()
 	if err != nil {
 		handleError(w, err)
@@ -42,8 +48,7 @@ func GetAllScan(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-//GetOneScan for GET
-func GetOneScan(w http.ResponseWriter, r *http.Request) {
+func GetOneParse(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	hosts, err := dao.FindOne(params["id"])
 	if err != nil {
@@ -59,7 +64,6 @@ func GetOneScan(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//JSONResponse to http
 func JSONResponse(w http.ResponseWriter, d []models.Document) error {
 	w.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(w)
@@ -68,8 +72,7 @@ func JSONResponse(w http.ResponseWriter, d []models.Document) error {
 	return err
 }
 
-//DeleteOneScan for DELETE
-func DeleteOneScan(w http.ResponseWriter, r *http.Request) {
+func DeleteOneParse(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	count, err := dao.DeleteOne(params["id"])
 	if err != nil {
@@ -80,8 +83,23 @@ func DeleteOneScan(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//DeleteAllScan for DELETE
-func DeleteAllScan(w http.ResponseWriter, _ *http.Request) {
+func LoadHosts(r *http.Request) models.Documents {
+	var dd models.Documents
+	scanner := bufio.NewScanner(r.Body)
+	for scanner.Scan() {
+		var d models.Document
+		for _, s := range []string{"http", "https"} {
+			for _, p := range []int{80, 443, 8000, 8080, 8443} {
+				d.Scheme = s
+				d.URL = fmt.Sprintf("%s://%s:%d", s, scanner.Text(), p)
+				dd = append(dd, d)
+			}
+		}
+	}
+	return dd
+}
+
+func DeleteAllParse(w http.ResponseWriter, _ *http.Request) {
 	count, err := dao.DeleteAll()
 	if err != nil {
 		handleError(w, err)
