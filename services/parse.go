@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
@@ -14,19 +15,24 @@ import (
 	"time"
 )
 
-func Parse(d models.Documents) models.Documents {
+func ParseH(dd models.Documents) {
+	result := Parse(dd)
+	dao.InsertMany(result)
+}
+
+func Parse(dd models.Documents) models.Documents {
 	var wg sync.WaitGroup
-	var dd models.Documents
-	res := make(chan models.Document, len(d))
-	for _, doc := range d {
+	var result models.Documents
+	res := make(chan models.Document, len(dd))
+	for _, doc := range dd {
 		wg.Add(1)
 		go ParseD(doc, &wg, res)
 	}
 	wg.Wait()
 	for i, l := 0, len(res); i < l; i++ {
-		dd = append(dd, <-res)
+		result = append(result, <-res)
 	}
-	return dd
+	return result
 }
 
 func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {

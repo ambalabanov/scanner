@@ -38,6 +38,14 @@ func InsertOne(d models.Document) error {
 	return err
 }
 
+//InsertMany documents
+func InsertMany(dd models.Documents) {
+	log.Println("Write to database")
+	for _, d := range dd {
+		collection.InsertOne(context.TODO(), d)
+	}
+}
+
 //DeleteOne document
 func DeleteOne(id string) (int64, error) {
 	log.Println("Delete documents")
