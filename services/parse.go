@@ -18,11 +18,11 @@ func Parse(d models.Documents) {
 	defer wg.Wait()
 	for _, doc := range d {
 		wg.Add(1)
-		go parse(doc, &wg)
+		go ParseD(doc, &wg)
 	}
 }
 
-func parse(d models.Document, wg *sync.WaitGroup) {
+func ParseD(d models.Document, wg *sync.WaitGroup) {
 	defer wg.Done()
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -88,4 +88,16 @@ func parse(d models.Document, wg *sync.WaitGroup) {
 	if err := dao.InsertOne(d); err != nil {
 		log.Println(err.Error())
 	}
+}
+
+func RemoveDuplicates(input *[]string) {
+	found := make(map[string]bool)
+	var unique []string
+	for _, val := range *input {
+		if found[val] == false {
+			found[val] = true
+			unique = append(unique, val)
+		}
+	}
+	*input = unique
 }
