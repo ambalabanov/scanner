@@ -1,19 +1,16 @@
 package services
 
 import (
-	"bytes"
-	"io"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"sync"
-	"time"
-
+	"github.com/PuerkitoBio/goquery"
 	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
+	"log"
+	"net/http"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
 )
 
 func Parse(d models.Documents) {
@@ -27,70 +24,68 @@ func Parse(d models.Documents) {
 
 func parse(d models.Document, wg *sync.WaitGroup) {
 	defer wg.Done()
-	client := http.Client{
-		Timeout: 5 * time.Second,
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 	r, err := client.Get(d.URL)
 	if err != nil {
 		return
 	}
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
+	//400 The plain HTTP request was sent to HTTPS port
+	if r.StatusCode == 400 {
 		return
 	}
+	d.ID = primitive.NewObjectID()
+	d.CreatedAt = time.Now()
 	d.Method = r.Request.Method
 	d.Scheme = r.Request.URL.Scheme
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
 	d.Header = r.Header
-	d.ID = primitive.NewObjectID()
-	d.CreatedAt = time.Now()
-	d.Body = body
-	log.Println("Parse body")
-	parseLinks(&d, ioutil.NopCloser(bytes.NewBuffer(body)))
-	parseTitle(&d, ioutil.NopCloser(bytes.NewBuffer(body)))
+	doc, _ := goquery.NewDocumentFromReader(r.Body)
+	//parse links
+	doc.Find("a").Each(func(i int, s *goquery.Selection) {
+		href, exists := s.Attr("href")
+		if exists {
+			d.Links = append(d.Links, href)
+		}
+	})
+	//parse title
+	t := doc.Find("title").First()
+	d.Title = strings.TrimSpace(t.Text())
+	//parse forms
+	doc.Find("form").Each(func(i int, s *goquery.Selection) {
+		var f models.Form
+		if method, exists := s.Attr("method"); exists {
+			f.Method = method
+		}
+		if action, exists := s.Attr("action"); exists {
+			f.Action = action
+		}
+		s.Find("input").Each(func(i int, s *goquery.Selection) {
+			if name, exists := s.Attr("name"); exists {
+				f.Input = append(f.Input, name)
+				//find csrf token
+				re := regexp.MustCompile(`([xc]srf)|(token)`)
+				if re.FindStringIndex(name) != nil {
+					f.CSRF = true
+				}
+			}
+		})
+		d.Forms = append(d.Forms, f)
+	})
+	//parse scripts
+	doc.Find("script").Each(func(i int, script *goquery.Selection) {
+		src, exists := script.Attr("src")
+		if exists {
+			d.Scripts = append(d.Scripts, src)
+		}
+	})
 	d.UpdatedAt = time.Now()
 	if err := dao.InsertOne(d); err != nil {
 		log.Println(err.Error())
-	}
-}
-
-func parseLinks(d *models.Document, b io.Reader) {
-	var links, forms []string
-	tokenizer := html.NewTokenizer(b)
-	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
-		token := tokenizer.Token()
-		if tokenType == html.StartTagToken {
-			if token.DataAtom == atom.A || token.DataAtom == atom.Form {
-				for _, attr := range token.Attr {
-					switch attr.Key {
-					case "href":
-						links = append(links, attr.Val)
-					case "action":
-						forms = append(forms, attr.Val)
-					}
-				}
-			}
-		}
-		tokenType = tokenizer.Next()
-	}
-	d.Links = links
-	d.Forms = forms
-}
-
-func parseTitle(d *models.Document, b io.Reader) {
-	tokenizer := html.NewTokenizer(b)
-	for tokenType := tokenizer.Next(); tokenType != html.ErrorToken; {
-		token := tokenizer.Token()
-		if tokenType == html.StartTagToken {
-			if token.DataAtom == atom.Title {
-				tokenType = tokenizer.Next()
-				if tokenType == html.TextToken {
-					d.Title = tokenizer.Token().Data
-					break
-				}
-			}
-		}
-		tokenType = tokenizer.Next()
 	}
 }
