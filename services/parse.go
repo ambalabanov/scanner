@@ -1,10 +1,13 @@
 package services
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -100,4 +103,20 @@ func RemoveDuplicates(input *[]string) {
 		}
 	}
 	*input = unique
+}
+
+func LoadD(r io.Reader) models.Documents {
+	var dd models.Documents
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		var d models.Document
+		for _, s := range []string{"http", "https"} {
+			for _, p := range []int{80, 443, 8000, 8080, 8443} {
+				d.Scheme = s
+				d.URL = fmt.Sprintf("%s://%s:%d", s, scanner.Text(), p)
+				dd = append(dd, d)
+			}
+		}
+	}
+	return dd
 }
