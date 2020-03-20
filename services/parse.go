@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -16,16 +14,22 @@ import (
 	"time"
 )
 
-func Parse(d models.Documents) {
+func Parse(d models.Documents) models.Documents {
 	var wg sync.WaitGroup
-	defer wg.Wait()
+	var dd models.Documents
+	res := make(chan models.Document, len(d))
 	for _, doc := range d {
 		wg.Add(1)
-		go ParseD(doc, &wg)
+		go ParseD(doc, &wg, res)
 	}
+	wg.Wait()
+	for i, l := 0, len(res); i < l; i++ {
+		dd = append(dd, <-res)
+	}
+	return dd
 }
 
-func ParseD(d models.Document, wg *sync.WaitGroup) {
+func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	defer wg.Done()
 	client := &http.Client{
 		Timeout: 3 * time.Second,
@@ -50,16 +54,21 @@ func ParseD(d models.Document, wg *sync.WaitGroup) {
 	d.Header = r.Header
 	doc, _ := goquery.NewDocumentFromReader(r.Body)
 	//parse links
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		href, exists := s.Attr("href")
+	var links []string
+	doc.Find("a").Each(func(i int, l *goquery.Selection) {
+		href, exists := l.Attr("href")
 		if exists {
-			d.Links = append(d.Links, href)
+			links = append(links, href)
 		}
 	})
+	RemoveDuplicates(&links)
+	d.Links = links
 	//parse title
 	t := doc.Find("title").First()
 	d.Title = strings.TrimSpace(t.Text())
 	//parse forms
+	formsMap := make(map[string]bool)
+	var formsSlice []models.Form
 	doc.Find("form").Each(func(i int, s *goquery.Selection) {
 		var f models.Form
 		if method, exists := s.Attr("method"); exists {
@@ -78,19 +87,24 @@ func ParseD(d models.Document, wg *sync.WaitGroup) {
 				}
 			}
 		})
-		d.Forms = append(d.Forms, f)
-	})
-	//parse scripts
-	doc.Find("script").Each(func(i int, script *goquery.Selection) {
-		src, exists := script.Attr("src")
-		if exists {
-			d.Scripts = append(d.Scripts, src)
+		if formsMap[f.Action] == false {
+			formsMap[f.Action] = true
+			formsSlice = append(formsSlice, f)
 		}
 	})
+	d.Forms = formsSlice
+	//parse scripts
+	var scripts []string
+	doc.Find("script").Each(func(i int, s *goquery.Selection) {
+		src, exists := s.Attr("src")
+		if exists {
+			scripts = append(scripts, src)
+		}
+	})
+	RemoveDuplicates(&scripts)
+	d.Scripts = scripts
 	d.UpdatedAt = time.Now()
-	if err := dao.InsertOne(d); err != nil {
-		log.Println(err.Error())
-	}
+	res <- d
 }
 
 func RemoveDuplicates(input *[]string) {
