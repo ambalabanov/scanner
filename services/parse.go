@@ -2,12 +2,14 @@ package services
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -30,6 +32,7 @@ func Parse(dd models.Documents) models.Documents {
 	var wg sync.WaitGroup
 	var result models.Documents
 	res := make(chan models.Document, len(dd))
+
 	for _, doc := range dd {
 		wg.Add(1)
 		go ParseD(doc, &wg, res)
@@ -64,10 +67,23 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	d.Host = r.Request.Host
 	d.Status = r.StatusCode
 	d.Header = r.Header
-	doc, _ := goquery.NewDocumentFromReader(r.Body)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return
+	}
+	ParseBody(ioutil.NopCloser(bytes.NewBuffer(body)), &d)
+	d.UpdatedAt = time.Now()
+	res <- d
+}
+
+func ParseBody(b io.Reader, d *models.Document) {
+	doc, err := goquery.NewDocumentFromReader(b)
+	if err != nil {
+		return
+	}
 	//parse links
 	var links []string
-	doc.Find("a").Each(func(_ int, l *goquery.Selection) {
+	doc.Find("a").Each(func(i int, l *goquery.Selection) {
 		href, exists := l.Attr("href")
 		if exists {
 			links = append(links, href)
@@ -81,7 +97,7 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	//parse forms
 	formsMap := make(map[*models.Form]bool)
 	var formsSlice []models.Form
-	doc.Find("form").Each(func(_ int, s *goquery.Selection) {
+	doc.Find("form").Each(func(i int, s *goquery.Selection) {
 		f := new(models.Form)
 		if method, exists := s.Attr("method"); exists {
 			f.Method = method
@@ -89,7 +105,7 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 		if action, exists := s.Attr("action"); exists {
 			f.Action = action
 		}
-		s.Find("input").Each(func(_ int, s *goquery.Selection) {
+		s.Find("input").Each(func(i int, s *goquery.Selection) {
 			input := new(models.Input)
 			if n, exists := s.Attr("name"); exists {
 				input.Name = n
@@ -123,8 +139,6 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	})
 	RemoveDuplicates(&scripts)
 	d.Scripts = scripts
-	d.UpdatedAt = time.Now()
-	res <- d
 }
 
 func RemoveDuplicates(input *[]string) {
