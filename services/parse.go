@@ -67,7 +67,7 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	doc, _ := goquery.NewDocumentFromReader(r.Body)
 	//parse links
 	var links []string
-	doc.Find("a").Each(func(i int, l *goquery.Selection) {
+	doc.Find("a").Each(func(_ int, l *goquery.Selection) {
 		href, exists := l.Attr("href")
 		if exists {
 			links = append(links, href)
@@ -81,7 +81,7 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	//parse forms
 	formsMap := make(map[*models.Form]bool)
 	var formsSlice []models.Form
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
+	doc.Find("form").Each(func(_ int, s *goquery.Selection) {
 		f := new(models.Form)
 		if method, exists := s.Attr("method"); exists {
 			f.Method = method
@@ -89,17 +89,25 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 		if action, exists := s.Attr("action"); exists {
 			f.Action = action
 		}
-		s.Find("input").Each(func(i int, s *goquery.Selection) {
-			if name, exists := s.Attr("name"); exists {
-				f.Input = append(f.Input, name)
+		s.Find("input").Each(func(_ int, s *goquery.Selection) {
+			input := new(models.Input)
+			if n, exists := s.Attr("name"); exists {
+				input.Name = n
 				//find csrf token
 				re := regexp.MustCompile(regex)
-				if re.FindStringIndex(name) != nil {
+				if re.FindStringIndex(n) != nil {
 					f.CSRF = true
 				}
 			}
+			if t, exists := s.Attr("type"); exists {
+				input.Type = t
+			}
+			if v, exists := s.Attr("value"); exists {
+				input.Value = v
+			}
+			f.Input = append(f.Input, *input)
 		})
-		if formsMap[f] == false {
+		if !formsMap[f] {
 			formsMap[f] = true
 			formsSlice = append(formsSlice, *f)
 		}
