@@ -32,11 +32,11 @@ func Parse(dd models.Documents) models.Documents {
 	var wg sync.WaitGroup
 	var result models.Documents
 	res := make(chan models.Document, len(dd))
-
 	for _, doc := range dd {
 		wg.Add(1)
 		go ParseD(doc, &wg, res)
 	}
+	time.Sleep(1 * time.Second)
 	wg.Wait()
 	for i, l := 0, len(res); i < l; i++ {
 		result = append(result, <-res)
@@ -68,10 +68,9 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	d.Status = r.StatusCode
 	d.Header = r.Header
 	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return
+	if err == nil {
+		ParseBody(ioutil.NopCloser(bytes.NewBuffer(body)), &d)
 	}
-	ParseBody(ioutil.NopCloser(bytes.NewBuffer(body)), &d)
 	d.UpdatedAt = time.Now()
 	res <- d
 }
