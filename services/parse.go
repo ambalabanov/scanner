@@ -47,7 +47,7 @@ func Parse(dd models.Documents) models.Documents {
 func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	defer wg.Done()
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: 5 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
