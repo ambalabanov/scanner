@@ -15,6 +15,12 @@ import (
 	"time"
 )
 
+var (
+	ports  = []int{80, 443, 8000, 8080, 8443}
+	scheme = []string{"http", "https"}
+	regex  = `([xc]srf)|(token)`
+)
+
 func ParseH(dd models.Documents) {
 	result := Parse(dd)
 	dao.InsertMany(result)
@@ -73,10 +79,10 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 	t := doc.Find("title").First()
 	d.Title = strings.TrimSpace(t.Text())
 	//parse forms
-	formsMap := make(map[string]bool)
+	formsMap := make(map[*models.Form]bool)
 	var formsSlice []models.Form
 	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		var f models.Form
+		f := new(models.Form)
 		if method, exists := s.Attr("method"); exists {
 			f.Method = method
 		}
@@ -87,15 +93,15 @@ func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
 			if name, exists := s.Attr("name"); exists {
 				f.Input = append(f.Input, name)
 				//find csrf token
-				re := regexp.MustCompile(`([xc]srf)|(token)`)
+				re := regexp.MustCompile(regex)
 				if re.FindStringIndex(name) != nil {
 					f.CSRF = true
 				}
 			}
 		})
-		if formsMap[f.Action] == false {
-			formsMap[f.Action] = true
-			formsSlice = append(formsSlice, f)
+		if formsMap[f] == false {
+			formsMap[f] = true
+			formsSlice = append(formsSlice, *f)
 		}
 	})
 	d.Forms = formsSlice
@@ -130,8 +136,8 @@ func LoadD(r io.Reader) models.Documents {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		var d models.Document
-		for _, s := range []string{"http", "https"} {
-			for _, p := range []int{80, 443, 8000, 8080, 8443} {
+		for _, s := range scheme {
+			for _, p := range ports {
 				d.Scheme = s
 				d.URL = fmt.Sprintf("%s://%s:%d", s, scanner.Text(), p)
 				dd = append(dd, d)
