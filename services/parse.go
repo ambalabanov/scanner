@@ -13,14 +13,14 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 )
 
 var (
-	ports  = []int{80, 443, 8000, 8080, 8443}
-	scheme = []string{"http", "https"}
-	regex  = `([xc]srf)|(token)`
+	ports      = []int{80, 443, 8000, 8080, 8443}
+	scheme     = []string{"http", "https"}
+	regex      = `([xc]srf)|(token)`
+	numWorkers = 20
 )
 
 func ParseH(dd models.Documents) {
@@ -29,50 +29,50 @@ func ParseH(dd models.Documents) {
 }
 
 func Parse(dd models.Documents) models.Documents {
-	var wg sync.WaitGroup
-	var result models.Documents
-	res := make(chan models.Document, len(dd))
-	for _, doc := range dd {
-		wg.Add(1)
-		go ParseD(doc, &wg, res)
+	jobs := make(chan models.Document, len(dd))
+	results := make(chan models.Document, len(dd))
+	var res models.Documents
+	for _, d := range dd {
+		jobs <- d
 	}
-	time.Sleep(1 * time.Second)
-	wg.Wait()
-	for i, l := 0, len(res); i < l; i++ {
-		result = append(result, <-res)
+	for w := 1; w <= numWorkers; w++ {
+		go workerParse(jobs, results)
 	}
-	return result
+	close(jobs)
+	for i := 0; i < len(dd); i++ {
+		r := <-results
+		if r.Status != 0 && r.Status != 400 {
+			res = append(res, r)
+		}
+	}
+	return res
 }
 
-func ParseD(d models.Document, wg *sync.WaitGroup, res chan models.Document) {
-	defer wg.Done()
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+func workerParse(jobs <-chan models.Document, results chan<- models.Document) {
+	for d := range jobs {
+		client := &http.Client{
+			Timeout: 3 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		r, err := client.Get(d.URL)
+		if err != nil {
+			results <- d
+			continue
+		}
+		d.Method = r.Request.Method
+		d.Scheme = r.Request.URL.Scheme
+		d.Host = r.Request.Host
+		d.Status = r.StatusCode
+		d.Header = r.Header
+		body, err := ioutil.ReadAll(r.Body)
+		if err == nil {
+			ParseBody(ioutil.NopCloser(bytes.NewBuffer(body)), &d)
+		}
+		d.UpdatedAt = time.Now()
+		results <- d
 	}
-	r, err := client.Get(d.URL)
-	if err != nil {
-		return
-	}
-	//400 The plain HTTP request was sent to HTTPS port
-	if r.StatusCode == 400 {
-		return
-	}
-	d.ID = primitive.NewObjectID()
-	d.CreatedAt = time.Now()
-	d.Method = r.Request.Method
-	d.Scheme = r.Request.URL.Scheme
-	d.Host = r.Request.Host
-	d.Status = r.StatusCode
-	d.Header = r.Header
-	body, err := ioutil.ReadAll(r.Body)
-	if err == nil {
-		ParseBody(ioutil.NopCloser(bytes.NewBuffer(body)), &d)
-	}
-	d.UpdatedAt = time.Now()
-	res <- d
 }
 
 func ParseBody(b io.Reader, d *models.Document) {
@@ -159,6 +159,8 @@ func LoadD(r io.Reader) models.Documents {
 		var d models.Document
 		for _, s := range scheme {
 			for _, p := range ports {
+				d.ID = primitive.NewObjectID()
+				d.CreatedAt = time.Now()
 				d.Scheme = s
 				d.URL = fmt.Sprintf("%s://%s:%d", s, scanner.Text(), p)
 				dd = append(dd, d)
