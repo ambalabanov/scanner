@@ -42,7 +42,10 @@ func InsertOne(d models.Document) error {
 func InsertMany(dd models.Documents) {
 	log.Println("Write to database")
 	for _, d := range dd {
-		collection.InsertOne(context.TODO(), d)
+		err := InsertOne(d)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 
