@@ -7,6 +7,7 @@ import (
 	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
 	"github.com/ambalabanov/scanner/services"
+	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 )
 
@@ -46,9 +47,30 @@ func GetAllParse(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func GetOneParse(w http.ResponseWriter, r *http.Request) {
+func GetIdParse(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	hosts, err := dao.FindOne(params["id"])
+	hosts, err := dao.FindId(params["id"])
+	if err != nil {
+		handleError(w, err)
+	}
+	if len(hosts) == 0 {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+	err = JSONResponse(w, hosts)
+	if err != nil {
+		handleError(w, err)
+	}
+}
+
+func GetUrlParse(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	validUrl := govalidator.IsURL(params["url"])
+	if !validUrl {
+		http.Error(w, "Bad URL", http.StatusBadRequest)
+		return
+	}
+	hosts, err := dao.FindUrl(params["url"])
 	if err != nil {
 		handleError(w, err)
 	}

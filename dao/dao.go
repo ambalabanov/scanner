@@ -82,12 +82,27 @@ func FindAll() ([]models.Document, error) {
 	return doc, nil
 }
 
-//FindOne document
-func FindOne(id string) ([]models.Document, error) {
+//FindId document
+func FindId(id string) ([]models.Document, error) {
 	log.Println("Read from database")
 	var doc models.Documents
 	docID, _ := primitive.ObjectIDFromHex(id)
 	cursor, err := collection.Find(context.TODO(), bson.M{"_id": docID})
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(context.TODO(), &doc)
+	if err != nil {
+		return nil, err
+	}
+	return doc, nil
+}
+
+//FindUrl document
+func FindUrl(url string) ([]models.Document, error) {
+	log.Println("Read from database")
+	var doc models.Documents
+	cursor, err := collection.Find(context.TODO(), bson.M{"url": url})
 	if err != nil {
 		return nil, err
 	}
