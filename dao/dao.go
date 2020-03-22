@@ -105,7 +105,7 @@ func FindId(id string) ([]models.Document, error) {
 func FindUrl(url string) ([]models.Document, error) {
 	log.Println("Read from database")
 	var doc models.Documents
-	cursor, err := collection.Find(context.TODO(), bson.M{"url": url})
+	cursor, err := collection.Find(context.TODO(), bson.M{"url": bson.M{"$regex": url}})
 	if err != nil {
 		return nil, err
 	}
