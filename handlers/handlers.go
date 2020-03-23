@@ -14,21 +14,18 @@ func handleError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
-func CreateScan(w http.ResponseWriter, r *http.Request) {
-	hosts := services.LoadD(r.Body)
-	go services.ParseH(hosts)
-	http.Error(w, "Scan was successfully created", http.StatusCreated)
+func JSONResponse(w http.ResponseWriter, d []models.Document) error {
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	err := encoder.Encode(d)
+	return err
 }
 
 func CreateParse(w http.ResponseWriter, r *http.Request) {
-	var hosts models.Documents
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&hosts)
-	if err != nil {
-		handleError(w, err)
-	}
+	hosts := services.LoadD(r.Body)
 	go services.ParseH(hosts)
-	http.Error(w, "Parse was successfully created", http.StatusCreated)
+	http.Error(w, "Scan was successfully created", http.StatusCreated)
 }
 
 func GetAllParse(w http.ResponseWriter, _ *http.Request) {
@@ -78,15 +75,7 @@ func GetUrlParse(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func JSONResponse(w http.ResponseWriter, d []models.Document) error {
-	w.Header().Set("Content-Type", "application/json")
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	err := encoder.Encode(d)
-	return err
-}
-
-func DeleteOneParse(w http.ResponseWriter, r *http.Request) {
+func DeleteIdParse(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	count, err := dao.DeleteOne(params["id"])
 	if err != nil {

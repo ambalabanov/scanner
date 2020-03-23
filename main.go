@@ -48,13 +48,12 @@ func init() {
 func main() {
 	router := mux.NewRouter()
 	sub := router.PathPrefix("/api/v1").Subrouter()
-	sub.HandleFunc("/parse", handlers.CreateScan).Methods("POST")
-	sub.HandleFunc("/url", handlers.CreateParse).Methods("POST")
+	sub.HandleFunc("/parse", handlers.CreateParse).Methods("POST")
 	sub.HandleFunc("/parse/", handlers.GetAllParse).Methods("GET")
 	sub.HandleFunc("/parse", handlers.GetUrlParse).Methods("GET").Queries("url", "{url}")
 	sub.HandleFunc("/parse/{id:[0-9a-fA-F]+}", handlers.GetIdParse).Methods("GET")
 	sub.HandleFunc("/parse", handlers.DeleteAllParse).Methods("DELETE")
-	sub.HandleFunc("/parse/{id:[0-9a-fA-F]+}", handlers.DeleteOneParse).Methods("DELETE")
+	sub.HandleFunc("/parse/{id:[0-9a-fA-F]+}", handlers.DeleteIdParse).Methods("DELETE")
 	log.Printf("Server starting on port %v...\n", config.Server.Port)
 	srv := &http.Server{
 		Handler:      router,

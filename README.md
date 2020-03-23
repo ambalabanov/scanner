@@ -1,23 +1,6 @@
-## HOW-TO USE:
-### Create scan
+# Scanner
 
-POST plaintext to /api/v1/parse:
-```text
-www.yandex.ru
-scanme.nmap.org
+### Install
+```bash
+go get -u https://github.com/ambalabanov/scanner
 ```
-or 
-
-POST JSON to /api/v1/url:
-```json
-[
-	{"url": "https://www.yandex.ru"},
-	{"url": "http://scanme.nmap.org"}
-]
-```
-
-### Get results
-GET /api/v1/parse
-
-### Delete results
-DELETE /api/v1/parse
