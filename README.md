@@ -2,7 +2,7 @@
 
 ### Install
 ```bash
-go get https://github.com/ambalabanov/scanner
+go get github.com/ambalabanov/scanner
 ```
 
 # scanner-cli
