@@ -1,10 +1,9 @@
-# scanner
+## scanner
+### install
+`go get github.com/ambalabanov/scanner`
 
-### Install
-```bash
-go get github.com/ambalabanov/scanner
-```
-
-# scanner-cli
-### use
+## scanner-cli
+### install
+`go get github.com/ambalabanov/scanner/cmd/scanner-cli`
+### usage
 `amass db -names -d example.com | scanner-cli`
