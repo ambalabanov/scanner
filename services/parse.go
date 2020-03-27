@@ -20,7 +20,7 @@ var (
 	ports      = []int{80, 443, 8000, 8080, 8443}
 	scheme     = []string{"http", "https"}
 	regex      = `([xc]srf)|(token)`
-	numWorkers = 20
+	numWorkers = 100
 )
 
 func ParseH(dd models.Documents) {
