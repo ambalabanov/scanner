@@ -22,6 +22,7 @@ type Document struct {
 	Forms             []Form             `bson:"forms" json:"forms,omitempty"`
 	Scripts           []string           `bson:"scripts" json:"scripts,omitempty"`
 	Subdomaintakeover string             `bson:"subdomaintakeover" json:"subdomaintakeover,omitempty"`
+	CNAME             string             `bson:"cname" json:"cname"`
 }
 type Form struct {
 	CSRF   bool    `bson:"form_csrf" json:"form_csrf"`
