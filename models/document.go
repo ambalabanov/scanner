@@ -8,19 +8,20 @@ import (
 )
 
 type Document struct {
-	ID        primitive.ObjectID `bson:"_id" json:"id"`
-	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
-	URL       string             `bson:"url" json:"url"`
-	Method    string             `bson:"method" json:"method"`
-	Scheme    string             `bson:"scheme" json:"scheme"`
-	Host      string             `bson:"host" json:"host,omitempty"`
-	Status    int                `bson:"status" json:"status"`
-	Header    http.Header        `bson:"header" json:"header"`
-	Links     []string           `bson:"links" json:"links,omitempty"`
-	Title     string             `bson:"title" json:"title,omitempty"`
-	Forms     []Form             `bson:"forms" json:"forms,omitempty"`
-	Scripts   []string           `bson:"scripts" json:"scripts,omitempty"`
+	ID                primitive.ObjectID `bson:"_id" json:"id"`
+	CreatedAt         time.Time          `bson:"created_at" json:"created_at"`
+	UpdatedAt         time.Time          `bson:"updated_at" json:"updated_at"`
+	URL               string             `bson:"url" json:"url"`
+	Method            string             `bson:"method" json:"method"`
+	Scheme            string             `bson:"scheme" json:"scheme"`
+	Host              string             `bson:"host" json:"host,omitempty"`
+	Status            int                `bson:"status" json:"status"`
+	Header            http.Header        `bson:"header" json:"header"`
+	Links             []string           `bson:"links" json:"links,omitempty"`
+	Title             string             `bson:"title" json:"title,omitempty"`
+	Forms             []Form             `bson:"forms" json:"forms,omitempty"`
+	Scripts           []string           `bson:"scripts" json:"scripts,omitempty"`
+	Subdomaintakeover string             `bson:"subdomaintakeover" json:"subdomaintakeover,omitempty"`
 }
 type Form struct {
 	CSRF   bool    `bson:"form_csrf" json:"form_csrf"`
