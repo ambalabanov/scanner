@@ -67,7 +67,7 @@ func workerParse(jobs <-chan models.Document, results chan<- models.Document) {
 		d.Status = r.StatusCode
 		d.Header = r.Header
 		body, err := ioutil.ReadAll(r.Body)
-		d.CNAME = getCNAME(d.Domain)
+		d.CNAME = GetCNAME(d.Domain)
 		d.Subdomaintakeover = SubCheck(body)
 		if err == nil {
 			ParseBody(ioutil.NopCloser(bytes.NewBuffer(body)), &d)

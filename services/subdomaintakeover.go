@@ -41,7 +41,6 @@ var fingerprints = map[string]string{
 	"UserVoice":        "This UserVoice subdomain is currently available!",
 	"Wordpress":        "Do you want to register",
 	"Zendesk":          "Help Center Closed",
-	"Example.com":      "This domain is for use in illustrative examples in documents.", //for tests
 }
 
 func SubCheck(body []byte) string {
@@ -57,7 +56,7 @@ func SubCheck(body []byte) string {
 	return s
 }
 
-func getCNAME(domain string) string {
+func GetCNAME(domain string) string {
 	var cname string
 	d := new(dns.Msg)
 	d.SetQuestion(domain+".", dns.TypeCNAME)
