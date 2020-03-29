@@ -67,7 +67,7 @@ func workerParse(jobs <-chan models.Document, results chan<- models.Document) {
 		d.Status = r.StatusCode
 		d.Header = r.Header
 		body, err := ioutil.ReadAll(r.Body)
-		d.CNAME = getCNAME(d.URL)
+		d.CNAME = getCNAME(d.Domain)
 		d.Subdomaintakeover = SubCheck(body)
 		if err == nil {
 			ParseBody(ioutil.NopCloser(bytes.NewBuffer(body)), &d)
@@ -164,7 +164,8 @@ func LoadD(r io.Reader) models.Documents {
 				d.ID = primitive.NewObjectID()
 				d.CreatedAt = time.Now()
 				d.Scheme = s
-				d.URL = fmt.Sprintf("%s://%s:%d", s, scanner.Text(), p)
+				d.Domain = scanner.Text()
+				d.URL = fmt.Sprintf("%s://%s:%d", s, d.Domain, p)
 				dd = append(dd, d)
 			}
 		}

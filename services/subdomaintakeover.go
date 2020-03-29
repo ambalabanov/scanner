@@ -3,7 +3,6 @@ package services
 import (
 	"bytes"
 	"github.com/miekg/dns"
-	"net/url"
 )
 
 //https://github.com/EdOverflow/can-i-take-over-xyz
@@ -58,11 +57,10 @@ func SubCheck(body []byte) string {
 	return s
 }
 
-func getCNAME(u string) string {
+func getCNAME(domain string) string {
 	var cname string
-	s, _ := url.Parse(u)
 	d := new(dns.Msg)
-	d.SetQuestion(s.Hostname()+".", dns.TypeCNAME)
+	d.SetQuestion(domain+".", dns.TypeCNAME)
 	ret, err := dns.Exchange(d, "8.8.8.8:53")
 	if err != nil {
 		return cname
