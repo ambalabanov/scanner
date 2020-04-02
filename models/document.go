@@ -37,3 +37,10 @@ type Input struct {
 	Value string `bson:"input_value" json:"input_value,omitempty"`
 }
 type Documents []Document
+
+func NewDocument() *Document {
+	var d Document
+	d.ID = primitive.NewObjectID()
+	d.CreatedAt = time.Now()
+	return &d
+}

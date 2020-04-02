@@ -7,7 +7,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -158,15 +157,13 @@ func LoadD(r io.Reader) models.Documents {
 	var dd models.Documents
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		var d models.Document
 		for _, s := range scheme {
 			for _, p := range ports {
-				d.ID = primitive.NewObjectID()
-				d.CreatedAt = time.Now()
+				d := models.NewDocument()
 				d.Scheme = s
 				d.Domain = scanner.Text()
 				d.URL = fmt.Sprintf("%s://%s:%d", s, d.Domain, p)
-				dd = append(dd, d)
+				dd = append(dd, *d)
 			}
 		}
 	}
