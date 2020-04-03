@@ -20,6 +20,7 @@ var (
 	scheme     = []string{"http", "https"}
 	regex      = `([xc]srf)|(token)`
 	numWorkers = 100
+	userAgent  = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15"
 )
 
 func ParseH(dd models.Documents) {
@@ -55,7 +56,9 @@ func workerParse(jobs <-chan models.Document, results chan<- models.Document) {
 				return http.ErrUseLastResponse
 			},
 		}
-		r, err := client.Get(d.URL)
+		req, _ := http.NewRequest(http.MethodGet, d.URL, nil)
+		req.Header.Set("User-Agent", userAgent)
+		r, err := client.Do(req)
 		if err != nil {
 			results <- d
 			continue
