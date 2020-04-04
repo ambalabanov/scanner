@@ -92,14 +92,17 @@ func ParseBody(b io.Reader, d *models.Document) {
 		return
 	}
 	//parse links
+	linksMap := make(map[string]bool)
 	var links []string
 	doc.Find("a").Each(func(i int, l *goquery.Selection) {
 		href, exists := l.Attr("href")
 		if exists {
-			links = append(links, href)
+			if linksMap[href] == false {
+				linksMap[href] = true
+				links = append(links, href)
+			}
 		}
 	})
-	RemoveDuplicates(&links)
 	d.Links = links
 	//parse title
 	t := doc.Find("title").First()
@@ -140,25 +143,16 @@ func ParseBody(b io.Reader, d *models.Document) {
 	})
 	d.Forms = formsSlice
 	//parse scripts
+	scriptsMap := make(map[string]bool)
 	var scripts []string
 	doc.Find("script").Each(func(i int, s *goquery.Selection) {
 		src, exists := s.Attr("src")
 		if exists {
-			scripts = append(scripts, src)
+			if scriptsMap[src] == false {
+				scriptsMap[src] = true
+				scripts = append(scripts, src)
+			}
 		}
 	})
-	RemoveDuplicates(&scripts)
 	d.Scripts = scripts
-}
-
-func RemoveDuplicates(input *[]string) {
-	found := make(map[string]bool)
-	var unique []string
-	for _, val := range *input {
-		if found[val] == false {
-			found[val] = true
-			unique = append(unique, val)
-		}
-	}
-	*input = unique
 }
