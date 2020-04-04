@@ -8,8 +8,7 @@ import (
 )
 
 func main() {
-	dd := services.LoadD(os.Stdin)
-	res := services.Parse(dd)
+	res := services.Parse(os.Stdin)
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	err := encoder.Encode(res)

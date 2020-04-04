@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/ambalabanov/scanner/dao"
 	"github.com/ambalabanov/scanner/models"
 	"io"
 	"io/ioutil"
@@ -23,12 +22,20 @@ var (
 	userAgent  = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15"
 )
 
-func ParseH(dd models.Documents) {
-	result := Parse(dd)
-	dao.InsertMany(result)
-}
-
-func Parse(dd models.Documents) models.Documents {
+func Parse(r io.Reader) models.Documents {
+	var dd models.Documents
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		for _, s := range scheme {
+			for _, p := range ports {
+				d := models.NewDocument()
+				d.Scheme = s
+				d.Domain = scanner.Text()
+				d.URL = fmt.Sprintf("%s://%s:%d", s, d.Domain, p)
+				dd = append(dd, *d)
+			}
+		}
+	}
 	jobs := make(chan models.Document, len(dd))
 	results := make(chan models.Document, len(dd))
 	var res models.Documents
@@ -154,21 +161,4 @@ func RemoveDuplicates(input *[]string) {
 		}
 	}
 	*input = unique
-}
-
-func LoadD(r io.Reader) models.Documents {
-	var dd models.Documents
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		for _, s := range scheme {
-			for _, p := range ports {
-				d := models.NewDocument()
-				d.Scheme = s
-				d.Domain = scanner.Text()
-				d.URL = fmt.Sprintf("%s://%s:%d", s, d.Domain, p)
-				dd = append(dd, *d)
-			}
-		}
-	}
-	return dd
 }

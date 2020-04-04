@@ -23,8 +23,7 @@ func JSONResponse(w http.ResponseWriter, d []models.Document) error {
 }
 
 func CreateParse(w http.ResponseWriter, r *http.Request) {
-	hosts := services.LoadD(r.Body)
-	go services.ParseH(hosts)
+	go dao.InsertMany(services.Parse(r.Body))
 	http.Error(w, "Scan was successfully created", http.StatusCreated)
 }
 
